@@ -1,2 +1,2 @@
 # goes
-goes versi 3
+goes main
