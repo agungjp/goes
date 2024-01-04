@@ -1,7 +1,90 @@
-void setup() {
+#include "iec104.h"
 
+iec104::iec104(SoftwareSerial &swSerial){
+  client = &swSerial;
 }
 
-void loop() {
+bool iec104::Run(){
+  Runs = 1 + Runs * (Runs < 4999);
 
+  
+
+  //****************** Read from socket ****************
+  if(client->available())
+  {
+    Reads = 1 + Reads * (Reads < 999);
+    int i = 0;
+    
+    while(client->available()){
+      delayMicroseconds(1500);
+      ByteArray[i] = client->read();
+      i++;
+    }
+    
+   #ifdef SrvDebug
+   int Length  =0;
+   Length  = sizeof(ByteArray)/sizeof(int);
+   Serial.print("Master :");
+   for (int i = 0;i<Length;i++ ){
+     Serial.print(ByteArray[i],HEX);
+     Serial.print(" ");
+   }
+   Serial.println();
+   #endif
+
+  if(ByteArray[2]==0x07){
+    uint8_t data[260] = {0x68,0x04,0x0B,0x00,0x00,0x00};
+    client->write(data, sizeof(data));
+    }else if(ByteArray[2]==0x43){
+      uint8_t data[260] = {0x68,0x04,0x83,0x00,0x00,0x00};
+      client->write(data, sizeof(data));
+    }else if(ByteArray[2]==0x01){
+      // do nothing
+    }else if(ByteArray[8]==0x06){
+      byte data1[] = {0x68,0x0E,0x00,0x00,0x02,0x00, 0x64, 0x01, 0x07, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x14};
+      byte data2[] = {0x68,0x12,0x02,0x00,0x02,0x00, 0x01, 0x02, 0x14, 0x00, 0x01, 0x00, 0xE9, 0x03, 0x00, 0x00, 0xEA, 0x03, 0x00, 0x00};
+      byte data3[] = {0x68,0x0E,0x04,0x00,0x02,0x00, 0x03, 0x01, 0x14, 0x00, 0x01, 0x00, 0xF8, 0x2A, 0x00, 0x02};
+      byte data4[] = {0x68,0x0E,0x06,0x00,0x02,0x00, 0x64, 0x01, 0x0A, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x14};
+      client->write(data1, sizeof(data1));
+      client->write(data2, sizeof(data2));
+      client->write(data3, sizeof(data3));
+      client->write(data4, sizeof(data4));
+    }else{
+      // do nothing
+    }
+  }
+  
+  if(!Active){
+    Active = true;
+    PreviousActivityTime = millis();
+    #ifdef SrvDebug
+      Serial.println("Srv active");
+    #endif
+  }
+
+  if(millis() > (PreviousActivityTime + 60000)){
+    if(Active){
+      Active = false;
+      #ifdef SrvDebug
+        Serial.println("Srv not active");
+      #endif
+    }
+  }
+}
+
+void iec104::SetFC(int fc)
+{
+  if(fc == 0x07) FC = 1;
+  if(fc == 0x43) FC = 2;
+  if(fc == 0x01) FC = 3;
+}
+
+void iec104::setLocal(int stat){
+  if(stat=1){
+    uint8_t data[260] = {0x68,0x15,0x08,0x00,0x02,0x00, 0x1E, 0x01, 0x03, 0x00, 0x01, 0x00, 0xE9, 0x03, 0x00, 0x01, 0x7D, 0x01, 0x1B, 0x09, 0x46, 0x02, 0x07};
+    client->write(data, sizeof(data));
+  }else{
+    uint8_t data[260] = {0x68,0x15,0x0A,0x00,0x02,0x00, 0x1E, 0x01, 0x03, 0x00, 0x01, 0x00, 0xE9, 0x03, 0x00, 0x00, 0x02, 0x1C, 0x1B, 0x09, 0x46, 0x02, 0x07};
+    client->write(data, sizeof(data));
+  }
 }
