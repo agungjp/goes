@@ -10,6 +10,8 @@ void setup() {
   Serial.begin(9600);
   SerialAT.begin(9600);
 
+  Serial.println(F("IEC 104 Slave - v1.2.0"));
+
   gsm.setupInputPins();         
   gsm.begin(&SerialAT);         
   gsm.setupConnection();        

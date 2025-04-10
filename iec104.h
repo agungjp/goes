@@ -5,6 +5,8 @@
 #include <SoftwareSerial.h>
 #include <DS3231.h>
 
+#define FW_VERSION "v1.2.0"
+
 class GSMConnection {
 public:
   void begin(Stream* serial);

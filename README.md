@@ -1,87 +1,55 @@
-<<<<<<< HEAD
-# 📡 IEC 60870-5-104 Arduino Slave (SCADA Integration)
+# 📡 IEC 60870-5-104 Arduino Slave – v1.2.0
 
-Implementasi protokol **IEC 60870-5-104** menggunakan **Arduino UNO** untuk keperluan komunikasi **SCADA** sebagai **slave/server**.
-=======
-# 📡 IEC 60870-5-104 Arduino Slave – Timestamp & COS
+Implementasi **protokol IEC 60870-5-104** menggunakan **Arduino UNO** sebagai **slave/server** untuk sistem **SCADA**.  
+Program ini mendukung pengiriman data dengan **timestamp CP56Time2a**, serta fitur **Change of State (COS)**.
 
-Proyek ini adalah implementasi **protokol IEC 60870-5-104** menggunakan **Arduino UNO** sebagai **slave/server** untuk sistem **SCADA**. Dilengkapi fitur **timestamp** (CP56Time2a) dan **Change of State (COS)**.
->>>>>>> da3af0a (update program ti 30 dan 31)
+---
+
+## 🏷️ Versi
+
+**Versi**: v1.2.0  
+**Tanggal**: 2025-04-10  
+**Fitur Baru**:
+- Timestamped data (TI 30 & TI 31)
+- COS (Change of State) → kirim data jika input berubah
+- RTC DS3231 (I2C)
+- Penanganan U-format, S-format, I-format
+- Struktur file modular (3 file: `.ino`, `.h`, `.cpp`)
 
 ---
 
 ## 🎯 Tujuan
 
-<<<<<<< HEAD
-- Menerima perintah dari master (misalnya: **CB OPEN**, **CB CLOSE**)
-- Mengontrol **relay output** sesuai perintah
-- Membaca status **Digital Input (DI)**:
-  - Mode **Remote / Local**
-  - Status **GFD**
-  - Status **CB** (Open/Close)
-
----
-
-## ⚙️ Fitur yang Sudah Jalan
-Fitur	Status	Keterangan
-STARTDT_ACT / TEST ACT	✅	Terima dan jawab otomatis
-General Interrogation (TI100)	✅	ACT_CON + TI1 + TI3 + ACT_TERM
-Parsing input digital	✅	Remote/Local, GFD, CB status
-Serial Command (CB OPEN/CLOSE)	✅	Dijalankan hanya saat mode Remote & status beda
-NS / NR handling	✅	NS naik tiap TX, NR dari Master diproses
-S-format parsing	✅	NR dari master → sinkronisasi txSequence
-
-## ⚙️ Perangkat Keras
-
-| Komponen              | Keterangan                     |
-|----------------------|---------------------------------|
-| Arduino UNO          | Mikrokontroler utama            |
-| Modul relay 2CH      | Kontrol output CB               |
-| Saklar / tombol      | Simulasi sinyal input           |
-| Ethernet Shield (opsional) | Untuk IEC 104 TCP/IP  |
-| RTC Module (opsional)| DS1302/DS3231 untuk timestamp   |
-=======
-- Menerima perintah dari master SCADA (misalnya: General Interrogation)
-- Mengirim status input dengan **timestamp**
-- Mendeteksi perubahan input (COS) dan mengirim otomatis
-- Menangani protokol standar: **I-format**, **S-format**, **U-format**
+- Menghubungkan Arduino UNO ke SCADA menggunakan IEC 104
+- Mengirim status input (remote/local, GFD, CB status)
+- Memberikan timestamp waktu nyata (dari RTC DS3231)
+- Menjawab general interrogation (TI 100)
+- Mengirim data saat status input berubah otomatis (COS)
 
 ---
 
 ## ⚙️ Perangkat Keras
 
-| Komponen         | Keterangan                      |
-|------------------|----------------------------------|
-| Arduino UNO       | Mikrokontroler utama             |
-| RTC DS3231        | Modul waktu real-time via I2C    |
-| Relay Module      | Kontrol output (CB Open/Close)   |
-| Saklar / tombol   | Simulasi sinyal input digital    |
-| GSM / Ethernet    | Komunikasi TCP (port 2404)       |
->>>>>>> da3af0a (update program ti 30 dan 31)
+| Komponen         | Keterangan                            |
+|------------------|----------------------------------------|
+| Arduino UNO       | Mikrokontroler utama                   |
+| RTC DS3231        | Modul waktu real-time (I2C)            |
+| Modul Relay       | Relay untuk kontrol CB OPEN/CLOSE      |
+| Saklar/Tombol     | Simulasi input digital                 |
+| GSM / Ethernet    | Komunikasi TCP port 2404 (IEC 104)     |
 
 ---
 
-## 📌 Definisi Pin
+## 📌 Definisi Pin Arduino
 
-<<<<<<< HEAD
-| Fungsi                  | Arduino Pin |
-|-------------------------|-------------|
-| Remote / Local          | D2          |
-| GFD Status              | D3          |
-| CB Status (bit 1)       | D4          |
-| CB Status (bit 2)       | D5          |
-| Relay CB OPEN           | D6 (PD6)    |
-| Relay CB CLOSE          | D7 (PD7)    |
-=======
-| Fungsi             | Arduino Pin |
-|--------------------|-------------|
-| Remote / Local     | D2          |
-| GFD Status         | D3          |
-| CB Status bit 1    | D4          |
-| CB Status bit 2    | D5          |
-| Relay CB OPEN      | D6 (PD6)    |
-| Relay CB CLOSE     | D7 (PD7)    |
->>>>>>> da3af0a (update program ti 30 dan 31)
+| Fungsi            | Pin |
+|-------------------|-----|
+| Remote / Local    | D2  |
+| GFD Status        | D3  |
+| CB Status Bit 1   | D4  |
+| CB Status Bit 2   | D5  |
+| Relay CB OPEN     | D6  |
+| Relay CB CLOSE    | D7  |
 
 ---
 
@@ -96,111 +64,69 @@ S-format parsing	✅	NR dari master → sinkronisasi txSequence
 
 ---
 
-<<<<<<< HEAD
-## 🖥️ Interaksi via Serial Monitor
-
-- **Ketik** perintah berikut di Serial Monitor (baud: `9600`):
-  - `CB OPEN` → Aktifkan relay OPEN selama 800ms
-  - `CB CLOSE` → Aktifkan relay CLOSE selama 800ms
-
-⚠️ Perintah **hanya akan dieksekusi** jika:
-- Mode = **Remote**
-- Status CB saat ini **berbeda** dengan perintah yang dikirim
-
----
-
-## 🔄 Integrasi IEC 60870-5-104
-
-Program mendukung komunikasi dengan master SCADA menggunakan protokol **IEC 60870-5-104**, mengikuti spesifikasi **SPLN S4.003-2011**.
-
-### ✔️ Fitur IEC 104:
-
-- **I-format**, **S-format**, dan **U-format** frame
-- Parsing & handling:
-  - `STARTDT_ACT`, `TEST ACT` → otomatis dijawab
-  - `General Interrogation (TI 100)` → dijawab dengan TI 1, TI 3, ACT_TERM
-- Struktur ASDU sesuai standar
-- Pengelolaan `NS` dan `NR` (sequence number)
-- Disiapkan untuk mendukung `TI 30`, `TI 31` (timestamp) dan `TI 46` (command)
-
----
-
-## 🧾 Definisi ASDU (Information Object Address - IOA)
-
-| Tipe                | IOA    | Deskripsi                  |
-|---------------------|--------|----------------------------|
-| DI (Single)         | 1001   | Status Remote / Local      |
-| DI (Single)         | 1002   | Status GFD                 |
-| DI (Double)         | 11000  | Status CB (Double Point)   |
-| DO (Double Command) | 23000  | Control CB OPEN / CLOSE    |
-
----
-
-## 📁 Struktur File (3 File Sederhana)
-
-| File         | Fungsi                                       |
-|--------------|----------------------------------------------|
-| `goes.ino`   | Main Arduino sketch                          |
-| `iec104.h`   | Header berisi class dan definisi protokol    |
-| `iec104.cpp` | Implementasi logika IEC 104 & I/O handling   |
-
----
-
-## 🛠️ Status
-
-✅ Stabil untuk komunikasi dasar IEC 104  
-✅ Teruji dengan frame nyata dari master SCADA  
-🚧 Siap dikembangkan lebih lanjut:
-- Timestamp: CP56Time2a (TI 30/31)
-- Command control: TI 46
-- Event logging
-
----
-
-=======
-## 🔄 Integrasi IEC 60870-5-104
-
-Program mendukung komunikasi **IEC 60870-5-104 TCP/IP** berdasarkan **SPLN S4.003-2011**.
-
-### ✔️ Fitur Protokol:
+## 🔄 Fitur IEC 60870-5-104
 
 | Fitur                | Keterangan                                   |
 |----------------------|----------------------------------------------|
-| STARTDT_ACT          | Dikenali dan dijawab (STARTDT_CON)          |
-| TEST ACT             | Dikenali dan dijawab (TEST_CON)             |
-| General Interrogation| Jawab: ACT_CON + TI 30 + TI 31 + ACT_TERM   |
-| NS / NR              | Dikelola otomatis (sequence sinkronisasi)   |
-| S-format (ACK)       | Digunakan untuk sinkronisasi txSequence     |
-
----
-
-## 🕒 Timestamp (CP56Time2a)
-
-- Semua data TI 30 & TI 31 dikirim dengan **timestamp 7-byte**
-- Format CP56Time2a sesuai standar IEC
-- Sumber waktu: **RTC DS3231**
+| U-format             | Menjawab STARTDT_ACT dan TEST ACT otomatis   |
+| S-format             | Parsing NR untuk sinkronisasi txSequence     |
+| I-format             | Kirim data lengkap sesuai format IEC 104     |
+| General Interrogation| Kirim: ACT_CON → TI30/31 → ACT_TERM          |
+| NS / NR              | Dikelola otomatis                            |
+| Timestamp            | Format CP56Time2a (7 byte) dari RTC DS3231   |
 
 ---
 
 ## ⚡ Change of State (COS)
 
-Program otomatis mengirim data saat terjadi perubahan input:
+Program mendeteksi dan mengirim **data otomatis** saat terjadi perubahan nilai input:
 
-| Input            | IOA   | Tipe    |
-|------------------|-------|---------|
-| Remote / Local   | 1001  | TI 30   |
-| GFD Status       | 1002  | TI 30   |
-| CB Status        | 11000 | TI 31   |
-
-Jika nilai berubah, maka:
-- Fungsi `sendTimestampedData()` akan dipanggil
-- Data dikirim ke master dengan waktu terkini
+| Input            | IOA   | TI    |
+|------------------|-------|-------|
+| Remote / Local   | 1001  | TI 30 |
+| GFD              | 1002  | TI 30 |
+| CB Status        | 11000 | TI 31 |
 
 ---
 
-## 📤 Struktur Pengiriman Data
+## 🕒 Format Timestamp (CP56Time2a)
 
-| Tipe Info | TI  | IOA    | Nilai     | Timestamp |
-|-----------|-----|--------|-----------|-----------|
-| Single
->>>>>>> da3af0a (update program ti 30 dan 31)
+| Byte | Isi             |
+|------|-----------------|
+| 0–1  | Millisecond (LE)|
+| 2    | Minute          |
+| 3    | Hour            |
+| 4    | Day + DayOfWeek |
+| 5    | Month           |
+| 6    | Year - 2000     |
+
+---
+
+## 📤 Tipe Data IEC 104 yang Didukung
+
+| Tipe         | Deskripsi                        | TI   | IOA    |
+|--------------|----------------------------------|------|--------|
+| Single Point | Remote / Local                   | 30   | 1001   |
+| Single Point | GFD                              | 30   | 1002   |
+| Double Point | CB Status (Open / Close)         | 31   | 11000  |
+
+---
+
+## 📁 Struktur File
+
+| File         | Fungsi                                 |
+|--------------|----------------------------------------|
+| `goes.ino`   | Program utama Arduino                  |
+| `iec104.h`   | Header class & konfigurasi pin/status  |
+| `iec104.cpp` | Implementasi logika protokol + RTC + COS |
+
+---
+
+## 📌 Selanjutnya Bisa Dikembangkan ke:
+
+- 🔘 TI 46 (perintah Open/Close dari SCADA)
+- 🧾 Logging event perubahan ke EEPROM atau file
+- 🕒 Kirim event TI 30/31 secara periodik
+
+---
+
