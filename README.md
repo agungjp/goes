@@ -15,6 +15,15 @@ Implementasi protokol **IEC 60870-5-104** menggunakan **Arduino UNO** untuk kepe
 
 ---
 
+## ⚙️ Fitur yang Sudah Jalan
+Fitur	Status	Keterangan
+STARTDT_ACT / TEST ACT	✅	Terima dan jawab otomatis
+General Interrogation (TI100)	✅	ACT_CON + TI1 + TI3 + ACT_TERM
+Parsing input digital	✅	Remote/Local, GFD, CB status
+Serial Command (CB OPEN/CLOSE)	✅	Dijalankan hanya saat mode Remote & status beda
+NS / NR handling	✅	NS naik tiap TX, NR dari Master diproses
+S-format parsing	✅	NR dari master → sinkronisasi txSequence
+
 ## ⚙️ Perangkat Keras
 
 | Komponen              | Keterangan                     |
