@@ -9,33 +9,49 @@ Versi ini adalah pengembangan dari `v1.3.1` dengan tambahan:
 
 ---
 
-## 🎯 Tujuan
+## 1. 🎯 TUJUAN PROGRAM
 
-- Menerima perintah dari master (CB OPEN/CLOSE)
-- Mengontrol output relay sesuai perintah
-- Membaca status digital input (DI):
-  - Mode Remote/Local
-  - Status GFD
-  - Status CB (Open/Close)
-- Menjawab Interrogation SCADA
-- Mengirim data COS + timestamp
-- Sinkronisasi waktu RTC dari SCADA (TI 103)
+- Menjadi slave/server IEC 104  
+- Komunikasi TCP dengan SCADA  
+- Kirim status DI: Remote/Local, GFD, CB Status  
+- Eksekusi perintah OPEN/CLOSE (TI 46)  
+- Kirim data COS otomatis saat perubahan  
+- Timestamp CP56Time2a via RTC DS3231  
+- Sinkronisasi waktu via TI 103  
 
 ---
 
-## ⚙️ Perangkat Keras
+## 2. 🧱 STRUKTUR FILE MODULAR
 
-| Komponen       | Fungsi                             |
-|----------------|------------------------------------|
-| Arduino UNO    | Mikrokontroler utama               |
-| Modul relay    | Kontrol CB OPEN / CLOSE            |
-| RTC DS3231     | Sumber waktu real (via I2C)        |
-| Saklar/tombol  | Simulasi input digital             |
-| Modem (AT Cmd) | Koneksi TCP ke SCADA (port 2404)   |
+| File             | Fungsi                           |
+|------------------|----------------------------------|
+| `goes.ino`       | Setup & loop utama               |
+| `IEC104Slave.h`  | Header class                     |
+| `IEC104Slave.cpp`| Implementasi seluruh logika      |
 
 ---
 
-## 📌 Definisi Pin
+## 3. 🧩 FITUR FINAL v1.4.0
+
+| Fitur                                               | Status |
+|-----------------------------------------------------|--------|
+| Respon STARTDT_ACT / TEST ACT                       | ✅     |
+| Respon General Interrogation (TI 100)               | ✅     |
+| Kirim status TI 30 (Remote, GFD)                    | ✅     |
+| Kirim status TI 31 (CB Status)                      | ✅     |
+| COS – Change of State otomatis                      | ✅     |
+| CP56Time2a dari RTC DS3231                          | ✅     |
+| TI 46 – Double Command (OPEN/CLOSE)                 | ✅     |
+| Proteksi TI 46: Mode Remote + Status berbeda        | ✅     |
+| ACK (COT=7) + Termination (COT=10)                  | ✅     |
+| NS / NR sinkron otomatis                            | ✅     |
+| RTC Sync dari master (TI 103)                       | ✅     |
+| Struktur class modular (IEC104Slave)                | ✅     |
+| Log debug NS/NR dan RTC (opsional #define DEBUG)    | ✅     |
+
+---
+
+## 4. 📌 KONFIGURASI PIN
 
 | Fungsi            | Arduino Pin |
 |-------------------|-------------|
@@ -48,94 +64,92 @@ Versi ini adalah pengembangan dari `v1.3.1` dengan tambahan:
 
 ---
 
-## 🧱 Struktur Program
+## 5. 📤 DATA YANG DIKIRIM
 
-| File             | Fungsi                               |
-|------------------|----------------------------------------|
-| `goes.ino`       | Program utama (setup & loop)           |
-| `IEC104Slave.h`  | Header class: deklarasi pin & status   |
-| `IEC104Slave.cpp`| Implementasi semua fungsi protokol     |
-
----
-
-## 📤 Data yang Dikirim
-
-| Tipe Info | TI | IOA     | Keterangan                       |
-|-----------|----|---------|----------------------------------|
-| SP+Time   | 30 | 1001    | Mode Remote/Local                |
-| SP+Time   | 30 | 1002    | Status GFD                       |
-| DP+Time   | 31 | 11000   | Status CB (Open/Close)           |
-| Command   | 46 | 23000*  | Kontrol CB OPEN/CLOSE            |
+| TI   | IOA     | Keterangan              |
+|------|---------|--------------------------|
+| 30   | 1001    | Remote/Local (SP+Time)   |
+| 30   | 1002    | GFD                      |
+| 31   | 11000   | CB Status (DP+Time)      |
+| 46   | 23000*  | Double Command           |
 
 ---
 
-## 🧩 Fitur-Fitur Lengkap v1.4.0
+## 6. ⚙️ PERANGKAT KERAS
 
-| Fitur                                               | Status |
-|-----------------------------------------------------|--------|
-| 📥 Respon **STARTDT_ACT** / **TEST ACT**            | ✅     |
-| 🧠 Respon **General Interrogation (TI 100)**        | ✅     |
-| 📤 Kirim status **TI 30** (Remote, GFD)             | ✅     |
-| 📤 Kirim status **TI 31** (CB Status)               | ✅     |
-| ⏱️ **CP56Time2a** dari RTC **DS3231**              | ✅     |
-| 🔄 **COS – Change of State otomatis**               | ✅     |
-| 🎮 **TI 46 – Double Command (OPEN/CLOSE)**          | ✅     |
-| 🔐 Proteksi TI 46: Mode Remote + Status berbeda     | ✅     |
-| 📡 Kirim **ACK (COT=7)** dan **Termination (COT=10)**| ✅     |
-| 🔁 NS / NR sinkronisasi otomatis                    | ✅     |
-| ⏱️ **Sinkronisasi waktu (TI 103)**                  | ✅     |
-| 🧩 Struktur class OOP modular                       | ✅     |
-| 🔍 DEBUG NS/NR log (aktif jika `#define DEBUG`)     | ✅     |
+| Komponen         | Fungsi                           |
+|------------------|----------------------------------|
+| Arduino UNO      | Mikrokontroler utama             |
+| RTC DS3231       | Waktu real-time (CP56Time2a)     |
+| Relay Module     | Kontrol CB OPEN/CLOSE            |
+| Modem Serial/GSM | Komunikasi TCP ke SCADA          |
+| Saklar / Tombol  | Simulasi status DI               |
 
 ---
 
-## 🔐 Proteksi TI 46
+## 7. 📥 FRAME YANG DITANGANI
 
-Perintah dari SCADA hanya dieksekusi jika:
-- Mode = Remote
-- Status CB berbeda dari perintah
-- SCO = 1 (OPEN) atau 2 (CLOSE)
-
-> Namun, slave **tetap mengirim ACK dan TERM** meskipun perintah ditolak.
+| TI       | Fungsi                                |
+|----------|----------------------------------------|
+| 64       | General Interrogation (TI 100)         |
+| 46       | Double Command                         |
+| 67       | RTC Sync (TI 103)                      |
+| U-Format | STARTDT_ACT, TEST_ACT                  |
+| S-Format | ACK Frame (update txSeq)               |
 
 ---
 
-## 🔄 COS – Change of State
+## 8. 📘 PENJELASAN PROGRAM PENTING
+
+### a. 🔐 PROTEKSI PERINTAH TI 46
+
+Perintah hanya dieksekusi jika:
+- Mode = Remote  
+- Status CB berbeda dari perintah  
+- SCO valid (1 = OPEN, 2 = CLOSE)
+
+> Tetap kirim **ACK** dan **Termination** meskipun perintah ditolak.
+
+---
+
+### b. 🔄 COS (Change of State)
 
 Perubahan pada:
-- Remote/Local
-- GFD
-- Status CB  
-akan langsung mengirim data (TI 30 / TI 31) ke master dengan timestamp CP56Time2a.
+- D2 → Remote/Local  
+- D3 → GFD  
+- D4 & D5 → CB Status  
+
+Akan otomatis mengirim TI 30 atau TI 31 + timestamp CP56Time2a.
 
 ---
 
-## ⏱️ Format Timestamp CP56Time2a
+### c. ⏱️ TIMESTAMP (CP56Time2a)
 
-| Byte | Isi                     |
-|------|--------------------------|
-| 0–1  | Millisecond (little-endian) |
-| 2    | Minute (6-bit)          |
-| 3    | Hour (5-bit)            |
-| 4    | Day + Day of Week       |
-| 5    | Month (4-bit)           |
-| 6    | Year (offset 2000)      |
+| Byte | Keterangan                |
+|------|---------------------------|
+| 0–1  | Millisecond (little endian) |
+| 2    | Minute                    |
+| 3    | Hour                      |
+| 4    | Date + Day of Week        |
+| 5    | Month                     |
+| 6    | Year (offset 2000)        |
 
----
-
-## 🔁 NS / NR Sinkron Otomatis
-
-- NS (send) dan NR (ack) otomatis dibaca & disusun
-- Slave update `rxSeq` dari frame master
-- Master update `txSeq` dari S-format
-
-> Bisa dimonitor dengan `#define DEBUG` → log NS/NR muncul
+Digunakan untuk semua frame TI 30 / 31 dan COS.
 
 ---
 
-## 🕒 Sinkronisasi Waktu (TI 103)
+### d. 🔁 NS / NR
 
-- Saat master kirim **TI 103** dengan CP56Time2a
-- Slave akan update waktu RTC secara otomatis
-- Waktu terbaru ditampilkan jika `DEBUG` aktif
+- `rxSeq` ← dari NS master (I-format)  
+- `txSeq` ← dari NR master (S-format)  
+- Sinkronisasi otomatis  
+- Log NS/NR aktif jika `#define DEBUG`
 
+---
+
+### e. 🕒 RTC SYNC – TI 103
+
+- Slave menerima frame TI 103 dari SCADA  
+- Waktu diambil dari CP56Time2a (7 byte)  
+- RTC DS3231 langsung di-set ke waktu terbaru  
+- Output:
