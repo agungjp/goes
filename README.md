@@ -1,128 +1,120 @@
-# 📡 IEC 60870-5-104 Arduino Slave – v1.3.0
+# 📡 IEC 60870-5-104 Arduino Slave – v1.3.1 (Refactor)
 
-Proyek ini adalah implementasi protokol **IEC 60870-5-104** pada **Arduino UNO** sebagai **slave/server** untuk komunikasi SCADA berbasis TCP (port 2404).
+Implementasi protokol **IEC 60870-5-104** berbasis Arduino UNO menggunakan struktur program yang lebih modular dan maintainable (OOP).  
+Versi ini adalah **refactor dari v1.3.0** yang memisahkan logika ke dalam class `IEC104Slave`.
 
 ---
 
 ## 🏷️ Versi Program
 
-| Versi    | Tanggal     | Fitur Utama                                                      |
-|----------|-------------|------------------------------------------------------------------|
-| v1.0.0   | -           | Struktur dasar program, komunikasi TCP, respon STARTDT/TEST     |
-| v1.1.0   | -           | Jawaban General Interrogation (TI 100) dengan ACT_CON & ACT_TERM|
-| v1.2.0   | 2025-04-10   | COS (Change of State), Timestamp (CP56Time2a), TI 30 & 31       |
-| **v1.3.0** | 2025-04-10 | ✅ TI 46: Eksekusi perintah CB OPEN/CLOSE + ACK & Termination    |
+| Versi     | Tanggal     | Fitur Utama                                               |
+|-----------|-------------|-----------------------------------------------------------|
+| v1.0.0    | -           | Struktur dasar IEC 104, respon STARTDT/TEST               |
+| v1.1.0    | -           | Respon General Interrogation (TI 100)                     |
+| v1.2.0    | 2025-04-10  | COS + Timestamp (TI 30 / 31), RTC via DS3231              |
+| v1.3.0    | 2025-04-10  | TI 46 (Double Command), Proteksi Mode, ACK+TERM           |
+| **v1.3.1**| 2025-04-10  | Refactor class OOP, lebih modular dan siap dikembangkan   |
 
 ---
 
 ## 🎯 Tujuan
 
-- Menerima perintah dari SCADA (TI 46, TI 100)
-- Mengirim status input digital
-- Kirim data dengan timestamp (TI 30/31)
-- Menjawab interogasi umum
-- Deteksi perubahan input dan kirim otomatis (COS)
+- Mengirim status DI (Remote/Local, GFD, CB Status) ke master SCADA
+- Menjawab interogasi SCADA (TI 100)
+- Merespon perintah CB (TI 46 OPEN/CLOSE)
+- Kirim timestamp CP56Time2a via RTC DS3231
+- Mengirim otomatis saat ada perubahan status (COS)
 
 ---
 
 ## ⚙️ Perangkat Keras
 
-| Komponen        | Keterangan                            |
-|-----------------|----------------------------------------|
-| Arduino UNO     | Mikrokontroler utama                   |
-| RTC DS3231      | Waktu real-time (via I2C)              |
-| Modul Relay     | Kontrol CB OPEN (D6) & CB CLOSE (D7)   |
-| Saklar/Tombol   | Simulasi input digital                 |
-| Modem Serial    | Komunikasi TCP via AT Command          |
+| Komponen     | Fungsi                          |
+|--------------|---------------------------------|
+| Arduino UNO  | Mikrokontroler utama            |
+| RTC DS3231   | Waktu real-time                 |
+| Modul Relay  | Kontrol CB (Open/Close)         |
+| Modem (GSM)  | Koneksi TCP port 2404           |
 
 ---
 
-## 📌 Konfigurasi Pin
+## 🧱 Struktur File
 
-| Fungsi            | Arduino Pin |
-|-------------------|-------------|
-| Remote / Local    | D2          |
-| GFD Status        | D3          |
-| CB Status Bit 1   | D4          |
-| CB Status Bit 2   | D5          |
-| Relay CB OPEN     | D6          |
-| Relay CB CLOSE    | D7          |
+| File             | Keterangan                            |
+|------------------|----------------------------------------|
+| `goes.ino`       | Entry point program                    |
+| `IEC104Slave.h`  | Header class untuk logika IEC104       |
+| `IEC104Slave.cpp`| Implementasi lengkap fungsi protokol   |
 
 ---
 
-## 🧠 Status CB
+## 🧠 Input / Output
 
-| D4 | D5 | Status     |
-|----|----|------------|
-| 0  | 0  | UNKNOWN    |
-| 1  | 0  | CB OPEN    |
-| 0  | 1  | CB CLOSE   |
-| 1  | 1  | UNKNOWN    |
-
----
-
-## 🔄 Protokol IEC 104
-
-| Tipe Info | TI   | IOA     | Keterangan                          |
-|-----------|------|---------|-------------------------------------|
-| SP + Time | 30   | 1001    | Remote/Local (0/1)                  |
-| SP + Time | 30   | 1002    | GFD Status (0/1)                    |
-| DP + Time | 31   | 11000   | CB Status (0:?, 1:Open, 2:Close, 3:?) |
-| Command   | 46   | bebas   | Perintah CB OPEN/CLOSE              |
+| Fungsi            | Pin Arduino | Keterangan                   |
+|-------------------|-------------|------------------------------|
+| Remote / Local    | D2          | LOW = Remote                 |
+| GFD Status        | D3          | HIGH/LOW (GFD On/Off)        |
+| CB Status Bit 1   | D4          |                              |
+| CB Status Bit 2   | D5          |                              |
+| Relay CB OPEN     | D6          | Aktif 800ms untuk buka CB    |
+| Relay CB CLOSE    | D7          | Aktif 800ms untuk tutup CB   |
 
 ---
 
-## 🔐 Proteksi Perintah (TI 46)
+## 📤 Data yang Dikirim
 
-Perintah dari SCADA hanya **dieksekusi** jika:
-
-- ✅ Mode = **Remote**
-- ✅ Status CB saat ini **berbeda**
-- ✅ Nilai SCO = 1 (OPEN) atau 2 (CLOSE)
-
-Perintah tetap akan dikirim ACK + Termination, meskipun tidak dieksekusi.
-
----
-
-## 📤 Laporan Perubahan (COS)
-
-Program mengirim data otomatis saat terjadi perubahan:
-
-- Remote/Local → TI 30, IOA 1001
-- GFD → TI 30, IOA 1002
-- CB Status → TI 31, IOA 11000
+| Tipe Info | TI   | IOA     | Keterangan                           |
+|-----------|------|---------|--------------------------------------|
+| SP+Time   | 30   | 1001    | Remote / Local                       |
+| SP+Time   | 30   | 1002    | GFD Status                           |
+| DP+Time   | 31   | 11000   | Status CB (Open/Close/Unknown)       |
+| Command   | 46   | dari master | Perintah CB OPEN/CLOSE           |
 
 ---
 
-## ⏱️ Format Waktu: CP56Time2a
+## 🔐 Proteksi Perintah TI 46
 
-7 byte timestamp dikirim pada TI 30 dan 31:
+Perintah hanya dieksekusi jika:
+- Mode = **Remote**
+- Perintah berbeda dari status saat ini
+- SCO valid (1 = OPEN, 2 = CLOSE)
 
-| Byte | Isi              |
-|------|------------------|
-| 0–1  | Milliseconds     |
-| 2    | Minutes          |
-| 3    | Hours            |
-| 4    | Date + DOW       |
-| 5    | Month            |
-| 6    | Year (offset 2000)|
+Tetap kirim **ACK (COT = 7)** dan **Termination (COT = 10)** meskipun ditolak.
 
 ---
 
-## 📁 Struktur File
+## 🔄 COS – Change of State
 
-| File         | Keterangan                               |
-|--------------|-------------------------------------------|
-| `goes.ino`   | Program utama Arduino                     |
-| `iec104.h`   | Header class, definisi pin/status         |
-| `iec104.cpp` | Implementasi protokol + COS + TI 46       |
+Jika status berikut berubah, maka otomatis akan dikirim ke SCADA:
+
+| Parameter       | TI   | IOA   |
+|------------------|------|--------|
+| Remote / Local   | 30   | 1001   |
+| GFD              | 30   | 1002   |
+| CB Status        | 31   | 11000  |
 
 ---
 
-## 🚀 Siap Digunakan Untuk
+## 🕒 Format Timestamp – CP56Time2a
 
-- RTU / Slave SCADA berbasis IEC 104
-- Simulasi sistem proteksi & kontrol CB
-- Pelatihan komunikasi protokol SCADA
+Format 7-byte waktu dari RTC (untuk TI 30 / TI 31):
+
+| Byte | Isi                |
+|------|---------------------|
+| 0-1  | Millisecond (LE)   |
+| 2    | Menit              |
+| 3    | Jam                |
+| 4    | Hari + Hari Minggu |
+| 5    | Bulan              |
+| 6    | Tahun (offset 2000)|
+
+---
+
+## 📦 Fitur Pendukung
+
+- AT Command untuk modem TCP
+- NS/NR parsing & tracking
+- Output serial log frame Master/Slave
+- Buffer aman (MAX 64 byte)
 
 ---

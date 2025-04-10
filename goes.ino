@@ -1,26 +1,13 @@
-#include <SoftwareSerial.h>
-#include "iec104.h"
+#include "IEC104Slave.h"
 
-SoftwareSerial SerialAT(10, 8);  // TX=10, RX=8
-GSMConnection gsm;
-
-unsigned long lastCheck = 0;
+IEC104Slave slave;
 
 void setup() {
   Serial.begin(9600);
-  SerialAT.begin(9600);
-  Serial.println(F("IEC 104 Slave - v1.3.0"));
-  gsm.setupInputPins();         
-  gsm.begin(&SerialAT);         
-  gsm.setupConnection();        
+  Serial.println(F("IEC 104 Slave - v1.3.1 (Refactor)"));
+  slave.begin();
 }
 
 void loop() {
-  gsm.listen();
-
-  if (millis() - lastCheck >= 1000) {
-    gsm.updateInputStatus();
-    gsm.checkAndSendCOS();
-    lastCheck = millis();
-  }
+  slave.loop();
 }
