@@ -24,6 +24,10 @@ void GSMConnection::setupInputPins() {
   pinMode(pinGFD, INPUT_PULLUP);
   pinMode(pinCB_1, INPUT_PULLUP);
   pinMode(pinCB_2, INPUT_PULLUP);
+  pinMode(pinRelayOpen, OUTPUT);
+  pinMode(pinRelayClose, OUTPUT);
+  digitalWrite(pinRelayOpen, LOW);
+  digitalWrite(pinRelayClose, LOW);
 }
 
 void GSMConnection::updateInputStatus() {
@@ -92,10 +96,7 @@ void GSMConnection::listen() {
       uint16_t nr = (ByteArray[5] << 7) | (ByteArray[4] >> 1);
       Serial.print("[INFO] S-format ACK → Master ACK hingga NS = ");
       Serial.println(nr - 1);
-      if (nr > txSequence) {
-        Serial.println("[SYNC] txSequence disesuaikan ke NR master");
-      }
-      txSequence = nr;
+      if (nr > txSequence) txSequence = nr;
     }
 
     if (i >= 6 && ByteArray[0] == 0x68 && ByteArray[1] == 0x04) {
@@ -111,13 +112,15 @@ void GSMConnection::listen() {
 
       byte actCon[] = {0x64,0x01,0x07,0x00,ca_lo,ca_hi,0x00,0x00,0x00,0x14};
       sendIFrame(actCon, sizeof(actCon)); delay(50);
-
       sendTimestampedData(30, 1001, statusLocalRemote ? 1 : 0); delay(50);
       sendTimestampedData(30, 1002, statusGFD ? 1 : 0); delay(50);
       sendTimestampedData(31, 11000, statusCB); delay(50);
-
       byte actTerm[] = {0x64,0x01,0x0A,0x00,ca_lo,ca_hi,0x00,0x00,0x00,0x14};
       sendIFrame(actTerm, sizeof(actTerm));
+    }
+
+    if (i >= 17 && ByteArray[6] == 0x2E) {
+      handleTI46(&ByteArray[6], i - 6);
     }
   }
 }
@@ -151,8 +154,6 @@ void GSMConnection::sendIFrame(const byte* payload, byte len) {
     Serial.print(frame[i], HEX); Serial.print(" ");
   }
   Serial.println();
-  Serial.print("[TX] NS: "); Serial.print(txSequence - 1);
-  Serial.print(" | NR: "); Serial.println(rxSequence);
 }
 
 void GSMConnection::convertToCP56Time2a(uint8_t* buffer) {
@@ -170,17 +171,68 @@ void GSMConnection::convertToCP56Time2a(uint8_t* buffer) {
 void GSMConnection::sendTimestampedData(byte ti, uint16_t ioa, byte value) {
   uint8_t cp56[7];
   convertToCP56Time2a(cp56);
-
-  byte payload[17];
-  payload[0] = ti;
-  payload[1] = 1;
-  payload[2] = 6; payload[3] = 0;
-  payload[4] = 1; payload[5] = 0;
-  payload[6] = ioa & 0xFF;
-  payload[7] = (ioa >> 8) & 0xFF;
-  payload[8] = 0x00;
-  payload[9] = value;
+  byte payload[17] = {
+    ti, 1, 6, 0, 1, 0,
+    (byte)(ioa & 0xFF), (byte)(ioa >> 8), 0x00,
+    value
+  };
   memcpy(&payload[10], cp56, 7);
-
   sendIFrame(payload, sizeof(payload));
+}
+
+void GSMConnection::triggerRelay(byte command) {
+  if (command == 1) {
+    Serial.println("[TI46] Eksekusi: CB OPEN (Relay PD6)");
+    digitalWrite(pinRelayOpen, HIGH);
+    delay(800);
+    digitalWrite(pinRelayOpen, LOW);
+  }
+  else if (command == 2) {
+    Serial.println("[TI46] Eksekusi: CB CLOSE (Relay PD7)");
+    digitalWrite(pinRelayClose, HIGH);
+    delay(800);
+    digitalWrite(pinRelayClose, LOW);
+  }
+}
+
+void GSMConnection::handleTI46(const byte* data, byte len) {
+  if (len < 11) return;
+
+  uint16_t ioa = data[6] | (data[7] << 8);
+  byte sco = data[9] & 0x03;
+
+  Serial.print("[TI46] Command dari Master IOA: ");
+  Serial.print(ioa);
+  Serial.print(" | SCO: ");
+  Serial.println(sco == 1 ? "ON (CB OPEN)" : (sco == 2 ? "OFF (CB CLOSE)" : "Invalid"));
+
+  if (!statusLocalRemote) {
+    Serial.println("[REJECT] MODE = LOCAL → Command ditolak");
+  }
+  else if (sco == 1 && statusCB == 1) {
+    Serial.println("[REJECT] CB sudah OPEN → Tidak dieksekusi");
+  }
+  else if (sco == 2 && statusCB == 2) {
+    Serial.println("[REJECT] CB sudah CLOSE → Tidak dieksekusi");
+  }
+  else if (sco == 1 || sco == 2) {
+    triggerRelay(sco);
+  } else {
+    Serial.println("[REJECT] SCO tidak valid");
+  }
+
+  byte ack[11] = {
+    0x2E, 0x01, 0x07, 0x00, 0x01, 0x00,
+    (byte)(ioa & 0xFF), (byte)(ioa >> 8), 0x00,
+    sco
+  };
+  sendIFrame(ack, sizeof(ack));
+  delay(50);
+
+  byte term[11] = {
+    0x2E, 0x01, 0x0A, 0x00, 0x01, 0x00,
+    (byte)(ioa & 0xFF), (byte)(ioa >> 8), 0x00,
+    sco
+  };
+  sendIFrame(term, sizeof(term));
 }
