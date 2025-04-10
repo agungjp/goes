@@ -1,11 +1,18 @@
+<<<<<<< HEAD
 # 📡 IEC 60870-5-104 Arduino Slave (SCADA Integration)
 
 Implementasi protokol **IEC 60870-5-104** menggunakan **Arduino UNO** untuk keperluan komunikasi **SCADA** sebagai **slave/server**.
+=======
+# 📡 IEC 60870-5-104 Arduino Slave – Timestamp & COS
+
+Proyek ini adalah implementasi **protokol IEC 60870-5-104** menggunakan **Arduino UNO** sebagai **slave/server** untuk sistem **SCADA**. Dilengkapi fitur **timestamp** (CP56Time2a) dan **Change of State (COS)**.
+>>>>>>> da3af0a (update program ti 30 dan 31)
 
 ---
 
 ## 🎯 Tujuan
 
+<<<<<<< HEAD
 - Menerima perintah dari master (misalnya: **CB OPEN**, **CB CLOSE**)
 - Mengontrol **relay output** sesuai perintah
 - Membaca status **Digital Input (DI)**:
@@ -33,11 +40,30 @@ S-format parsing	✅	NR dari master → sinkronisasi txSequence
 | Saklar / tombol      | Simulasi sinyal input           |
 | Ethernet Shield (opsional) | Untuk IEC 104 TCP/IP  |
 | RTC Module (opsional)| DS1302/DS3231 untuk timestamp   |
+=======
+- Menerima perintah dari master SCADA (misalnya: General Interrogation)
+- Mengirim status input dengan **timestamp**
+- Mendeteksi perubahan input (COS) dan mengirim otomatis
+- Menangani protokol standar: **I-format**, **S-format**, **U-format**
+
+---
+
+## ⚙️ Perangkat Keras
+
+| Komponen         | Keterangan                      |
+|------------------|----------------------------------|
+| Arduino UNO       | Mikrokontroler utama             |
+| RTC DS3231        | Modul waktu real-time via I2C    |
+| Relay Module      | Kontrol output (CB Open/Close)   |
+| Saklar / tombol   | Simulasi sinyal input digital    |
+| GSM / Ethernet    | Komunikasi TCP (port 2404)       |
+>>>>>>> da3af0a (update program ti 30 dan 31)
 
 ---
 
 ## 📌 Definisi Pin
 
+<<<<<<< HEAD
 | Fungsi                  | Arduino Pin |
 |-------------------------|-------------|
 | Remote / Local          | D2          |
@@ -46,6 +72,16 @@ S-format parsing	✅	NR dari master → sinkronisasi txSequence
 | CB Status (bit 2)       | D5          |
 | Relay CB OPEN           | D6 (PD6)    |
 | Relay CB CLOSE          | D7 (PD7)    |
+=======
+| Fungsi             | Arduino Pin |
+|--------------------|-------------|
+| Remote / Local     | D2          |
+| GFD Status         | D3          |
+| CB Status bit 1    | D4          |
+| CB Status bit 2    | D5          |
+| Relay CB OPEN      | D6 (PD6)    |
+| Relay CB CLOSE     | D7 (PD7)    |
+>>>>>>> da3af0a (update program ti 30 dan 31)
 
 ---
 
@@ -60,6 +96,7 @@ S-format parsing	✅	NR dari master → sinkronisasi txSequence
 
 ---
 
+<<<<<<< HEAD
 ## 🖥️ Interaksi via Serial Monitor
 
 - **Ketik** perintah berikut di Serial Monitor (baud: `9600`):
@@ -120,3 +157,50 @@ Program mendukung komunikasi dengan master SCADA menggunakan protokol **IEC 6087
 
 ---
 
+=======
+## 🔄 Integrasi IEC 60870-5-104
+
+Program mendukung komunikasi **IEC 60870-5-104 TCP/IP** berdasarkan **SPLN S4.003-2011**.
+
+### ✔️ Fitur Protokol:
+
+| Fitur                | Keterangan                                   |
+|----------------------|----------------------------------------------|
+| STARTDT_ACT          | Dikenali dan dijawab (STARTDT_CON)          |
+| TEST ACT             | Dikenali dan dijawab (TEST_CON)             |
+| General Interrogation| Jawab: ACT_CON + TI 30 + TI 31 + ACT_TERM   |
+| NS / NR              | Dikelola otomatis (sequence sinkronisasi)   |
+| S-format (ACK)       | Digunakan untuk sinkronisasi txSequence     |
+
+---
+
+## 🕒 Timestamp (CP56Time2a)
+
+- Semua data TI 30 & TI 31 dikirim dengan **timestamp 7-byte**
+- Format CP56Time2a sesuai standar IEC
+- Sumber waktu: **RTC DS3231**
+
+---
+
+## ⚡ Change of State (COS)
+
+Program otomatis mengirim data saat terjadi perubahan input:
+
+| Input            | IOA   | Tipe    |
+|------------------|-------|---------|
+| Remote / Local   | 1001  | TI 30   |
+| GFD Status       | 1002  | TI 30   |
+| CB Status        | 11000 | TI 31   |
+
+Jika nilai berubah, maka:
+- Fungsi `sendTimestampedData()` akan dipanggil
+- Data dikirim ke master dengan waktu terkini
+
+---
+
+## 📤 Struktur Pengiriman Data
+
+| Tipe Info | TI  | IOA    | Nilai     | Timestamp |
+|-----------|-----|--------|-----------|-----------|
+| Single
+>>>>>>> da3af0a (update program ti 30 dan 31)

@@ -2,18 +2,25 @@
 #include "iec104.h"
 
 SoftwareSerial SerialAT(10, 8);  // TX=10, RX=8 (modem)
-
 GSMConnection gsm;
+
+unsigned long lastCheck = 0;
 
 void setup() {
   Serial.begin(9600);
   SerialAT.begin(9600);
 
-  gsm.setupInputPins();         // Inisialisasi pin input
-  gsm.begin(&SerialAT);         // Inisialisasi modem
-  gsm.setupConnection();        // AT Command
+  gsm.setupInputPins();         
+  gsm.begin(&SerialAT);         
+  gsm.setupConnection();        
 }
 
 void loop() {
-  gsm.listen();                 // Baca & respon frame dari master
+  gsm.listen();
+
+  if (millis() - lastCheck >= 1000) {
+    gsm.updateInputStatus();
+    gsm.checkAndSendCOS();
+    lastCheck = millis();
+  }
 }
