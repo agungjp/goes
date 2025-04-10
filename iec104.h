@@ -1,26 +1,37 @@
-// Debug
-#define SrvDebug
+#ifndef IEC104_H
+#define IEC104_H
 
-#include "Arduino.h"
-#include <avr/wdt.h>
-#include <SPI.h>
+#include <Arduino.h>
 #include <SoftwareSerial.h>
 
-//Type of data
-
-
-class iec104
-{
+class GSMConnection {
 public:
-  iec104(SoftwareSerial &swSerial);
-  bool Run();   
-  bool Active;    
-  unsigned long PreviousActivityTime;
-  int Runs, Reads=1, Writes;
-  SoftwareSerial *client;
-  void setLocal(int stat);
-private: 
-  uint8_t ByteArray[260];
-  void SetFC(int fc);
-  int FC;
+  void begin(Stream* serial);
+  void setupConnection();
+  void listen();
+  void setupInputPins();
+
+private:
+  Stream* modemSerial;
+  void updateSerial();
+  void sendUFormat(byte controlByte);
+  void sendIFrame(const byte* payload, byte len);
+  void updateInputStatus();
+
+  // NS/NR
+  uint16_t txSequence = 0;
+  uint16_t rxSequence = 0;
+
+  // Status input
+  bool statusLocalRemote = false;
+  bool statusGFD = false;
+  byte statusCB = 0;
+
+  // Pin mapping
+  const int pinLocalRemote = 2;
+  const int pinGFD         = 3;
+  const int pinCB_1        = 4;
+  const int pinCB_2        = 5;
 };
+
+#endif
