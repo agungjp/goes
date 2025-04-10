@@ -12,9 +12,16 @@ void IEC104Slave::begin() {
   rtc.begin();
   setupPins();
   setupConnection();
+
+  updateInputs();
+  prevRemote = remote;
+  prevGFD = gfd;
+  prevCB = cb;
 }
 
 void IEC104Slave::run() {
+  updateInputs();
+  checkCOS();
   listen();
   checkCOS();
 }
@@ -52,7 +59,7 @@ void IEC104Slave::updateInputs() {
   prevGFD = gfd;
   prevCB = cb;
 
-  remote = digitalRead(PIN_REMOTE) == LOW;
+  remote = digitalRead(PIN_REMOTE) == HIGH; // HIGH = Local, LOW = Remote
   gfd = digitalRead(PIN_GFD);
 
   bool cb1 = digitalRead(PIN_CB1);
@@ -64,9 +71,31 @@ void IEC104Slave::updateInputs() {
 }
 
 void IEC104Slave::checkCOS() {
-  if (remote != prevRemote) sendTimestamped(30, 1001, remote ? 1 : 0);
-  if (gfd != prevGFD) sendTimestamped(30, 1002, gfd ? 1 : 0);
-  if (cb != prevCB) sendTimestamped(31, 11000, cb);
+  // Serial.println("[DEBUG] Memeriksa COS...");
+  if (remote != prevRemote) {
+    Serial.print("[DEBUG] Remote berubah: "); Serial.print(prevRemote); Serial.print(" → "); Serial.println(remote);
+    sendTimestamped(30, 1001, remote ? 1 : 0);
+    prevRemote = remote;
+  }
+  if (gfd != prevGFD) {
+    Serial.print("[DEBUG] GFD berubah: "); Serial.print(prevGFD); Serial.print(" → "); Serial.println(gfd);
+    sendTimestamped(30, 1002, gfd ? 1 : 0);
+    prevGFD = gfd;
+  }
+  if (cb != prevCB) {
+    Serial.print("[DEBUG] CB berubah: "); Serial.print(prevCB); Serial.print(" → "); Serial.println(cb);
+    sendTimestamped(31, 11000, cb);
+    prevCB = cb;
+  }
+
+  if (gfd != prevGFD) {
+    sendTimestamped(30, 1002, gfd ? 1 : 0);
+    prevGFD = gfd;
+  }
+  if (cb != prevCB) {
+    sendTimestamped(31, 11000, cb);
+    prevCB = cb;
+  }
 }
 
 void IEC104Slave::convertCP56Time2a(uint8_t* buffer) {
@@ -114,7 +143,7 @@ void IEC104Slave::sendIFrame(const byte* payload, byte len) {
   modem->write(frame, 6 + len);
   txSeq++;
 #ifdef DEBUG
-  Serial.print("Slave  : ");
+  Serial.print("Slave : NS ("); Serial.print(txSeq); Serial.print(") NR("); Serial.print(rxSeq); Serial.print(").    → ");
   for (int i = 0; i < 6 + len; i++) {
     if (frame[i] < 0x10) Serial.print("0");
     Serial.print(frame[i], HEX); Serial.print(" ");
@@ -126,7 +155,7 @@ void IEC104Slave::sendIFrame(const byte* payload, byte len) {
 void IEC104Slave::sendUFormat(byte controlByte) {
   byte r[6] = {0x68, 0x04, controlByte, 0x00, 0x00, 0x00};
   modem->write(r, 6);
-  Serial.print("Slave  : ");
+  Serial.print("Slave : NS ("); Serial.print(txSeq); Serial.print(") NR("); Serial.print(rxSeq); Serial.print(").    → ");
   for (int i = 0; i < 6; i++) {
     if (r[i] < 0x10) Serial.print("0");
     Serial.print(r[i], HEX); Serial.print(" ");
@@ -145,7 +174,7 @@ void IEC104Slave::listen() {
       buf[len++] = modem->read();
     }
 
-    Serial.print("Master : ");
+    Serial.print("Master : NS ("); Serial.print(ns); Serial.print(") NR("); Serial.print(nr); Serial.print(")     → ");
     for (int i = 0; i < len; i++) {
       if (buf[i] < 0x10) Serial.print("0");
       Serial.print(buf[i], HEX); Serial.print(" ");
@@ -163,16 +192,24 @@ void IEC104Slave::listen() {
 }
 
 void IEC104Slave::handleIFrame(const byte* buf, byte len) {
-  rxSeq = ((buf[3] << 7) | (buf[2] >> 1)) + 1;
+  // Ambil NS dan NR dari frame yang diterima
+  ns = (buf[3] << 7) | (buf[2] >> 1);
+  nr = (buf[5] << 7) | (buf[4] >> 1);
+
+  // Perbarui rxSeq untuk acknowledgment berikutnya
+  rxSeq = ns + 1;
+
+  // Perbarui txSeq mengikuti NR master
+  txSeq = nr;
+
 #ifdef DEBUG
-  uint16_t ns = (buf[3] << 7) | (buf[2] >> 1);
-  uint16_t nr = (buf[5] << 7) | (buf[4] >> 1);
   Serial.print("[DEBUG] Master NS: ");
   Serial.print(ns);
   Serial.print(" | Master NR: ");
   Serial.println(nr);
 #endif
 
+  // Proses sesuai Type Identification (TI)
   byte ti = buf[6];
   switch (ti) {
     case 100: handleGI(buf, len); break;
@@ -183,7 +220,7 @@ void IEC104Slave::handleIFrame(const byte* buf, byte len) {
 }
 
 void IEC104Slave::handleSFrame(const byte* buf) {
-  uint16_t nr = (buf[5] << 7) | (buf[4] >> 1);
+  nr = (buf[5] << 7) | (buf[4] >> 1);
   txSeq = nr;
 }
 

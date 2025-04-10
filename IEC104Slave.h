@@ -35,6 +35,7 @@ private:
   Stream* modem = nullptr;
 
   uint16_t txSeq = 0, rxSeq = 0;
+  uint16_t ns = 0, nr = 0;
   bool prevRemote = false, remote = false;
   bool prevGFD = false, gfd = false;
   byte prevCB = 0, cb = 0;
