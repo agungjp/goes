@@ -1,59 +1,113 @@
-# GOES - IEC 60870-5-104 Arduino Project
+# 📡 IEC 60870-5-104 Arduino Slave (SCADA Integration)
 
-Proyek ini adalah implementasi protokol **IEC 60870-5-104** menggunakan **Arduino UNO** untuk keperluan komunikasi SCADA, khususnya sebagai *slave/server*.
+Implementasi protokol **IEC 60870-5-104** menggunakan **Arduino UNO** untuk keperluan komunikasi **SCADA** sebagai **slave/server**.
+
+---
 
 ## 🎯 Tujuan
 
-- Menerima perintah dari master (seperti `CB OPEN` dan `CB CLOSE`)
-- Mengontrol output relay sesuai perintah
-- Membaca status digital input (DI) seperti:
-  - Mode Remote/Local
-  - Status GFD
-  - Status CB (Open/Close)
+- Menerima perintah dari master (misalnya: **CB OPEN**, **CB CLOSE**)
+- Mengontrol **relay output** sesuai perintah
+- Membaca status **Digital Input (DI)**:
+  - Mode **Remote / Local**
+  - Status **GFD**
+  - Status **CB** (Open/Close)
+
+---
 
 ## ⚙️ Perangkat Keras
 
-- Arduino UNO
-- Modul relay 2 channel
-- Input digital menggunakan saklar/tombol atau simulasi sinyal eksternal
-- Koneksi Ethernet (opsional untuk IEC 104)
-- Modul RTC (misal DS1302) untuk timestamp (jika digunakan)
+| Komponen              | Keterangan                     |
+|----------------------|---------------------------------|
+| Arduino UNO          | Mikrokontroler utama            |
+| Modul relay 2CH      | Kontrol output CB               |
+| Saklar / tombol      | Simulasi sinyal input           |
+| Ethernet Shield (opsional) | Untuk IEC 104 TCP/IP  |
+| RTC Module (opsional)| DS1302/DS3231 untuk timestamp   |
+
+---
 
 ## 📌 Definisi Pin
 
-| Fungsi              | Arduino Pin |
-|---------------------|-------------|
-| Remote/Local        | D2          |
-| GFD Status          | D3          |
-| CB Status (bit 1)   | D4          |
-| CB Status (bit 2)   | D5          |
-| Relay CB OPEN       | D6 (PD6)    |
-| Relay CB CLOSE      | D7 (PD7)    |
+| Fungsi                  | Arduino Pin |
+|-------------------------|-------------|
+| Remote / Local          | D2          |
+| GFD Status              | D3          |
+| CB Status (bit 1)       | D4          |
+| CB Status (bit 2)       | D5          |
+| Relay CB OPEN           | D6 (PD6)    |
+| Relay CB CLOSE          | D7 (PD7)    |
 
-## 🧠 Logika CB Status
+---
 
-- `D4 = 0, D5 = 0` → UNKNOWN
-- `D4 = 1, D5 = 0` → CB OPEN
-- `D4 = 0, D5 = 1` → CB CLOSE
-- `D4 = 1, D5 = 1` → UNKNOWN
+## 🧠 Logika Status CB
 
-## 🖥️ Interaksi Serial
+| D4 | D5 | Status     |
+|----|----|------------|
+| 0  | 0  | UNKNOWN    |
+| 1  | 0  | CB OPEN    |
+| 0  | 1  | CB CLOSE   |
+| 1  | 1  | UNKNOWN    |
 
-Ketik perintah berikut via Serial Monitor (baud 9600):
+---
 
-- `CB OPEN` → Aktifkan relay CB OPEN selama 800ms
-- `CB CLOSE` → Aktifkan relay CB CLOSE selama 800ms
+## 🖥️ Interaksi via Serial Monitor
 
-⚠️ Perintah hanya akan dijalankan jika:
-- Mode = Remote
-- Status CB berbeda dari perintah yang dikirim
+- **Ketik** perintah berikut di Serial Monitor (baud: `9600`):
+  - `CB OPEN` → Aktifkan relay OPEN selama 800ms
+  - `CB CLOSE` → Aktifkan relay CLOSE selama 800ms
 
-## 🔄 Integrasi IEC 104
+⚠️ Perintah **hanya akan dieksekusi** jika:
+- Mode = **Remote**
+- Status CB saat ini **berbeda** dengan perintah yang dikirim
 
-Proyek ini dirancang untuk mendukung integrasi ke IEC 60870-5-104 dengan:
-- Format frame sesuai SPLN S4.003-2011
-- Tipe data: TI 1, 3, 30, 31, 46, 100
-- Dukungan timestamp (CP56Time2a)
-- Simulasi I/O
+---
 
-## 📁 Struktur File
+## 🔄 Integrasi IEC 60870-5-104
+
+Program mendukung komunikasi dengan master SCADA menggunakan protokol **IEC 60870-5-104**, mengikuti spesifikasi **SPLN S4.003-2011**.
+
+### ✔️ Fitur IEC 104:
+
+- **I-format**, **S-format**, dan **U-format** frame
+- Parsing & handling:
+  - `STARTDT_ACT`, `TEST ACT` → otomatis dijawab
+  - `General Interrogation (TI 100)` → dijawab dengan TI 1, TI 3, ACT_TERM
+- Struktur ASDU sesuai standar
+- Pengelolaan `NS` dan `NR` (sequence number)
+- Disiapkan untuk mendukung `TI 30`, `TI 31` (timestamp) dan `TI 46` (command)
+
+---
+
+## 🧾 Definisi ASDU (Information Object Address - IOA)
+
+| Tipe                | IOA    | Deskripsi                  |
+|---------------------|--------|----------------------------|
+| DI (Single)         | 1001   | Status Remote / Local      |
+| DI (Single)         | 1002   | Status GFD                 |
+| DI (Double)         | 11000  | Status CB (Double Point)   |
+| DO (Double Command) | 23000  | Control CB OPEN / CLOSE    |
+
+---
+
+## 📁 Struktur File (3 File Sederhana)
+
+| File         | Fungsi                                       |
+|--------------|----------------------------------------------|
+| `goes.ino`   | Main Arduino sketch                          |
+| `iec104.h`   | Header berisi class dan definisi protokol    |
+| `iec104.cpp` | Implementasi logika IEC 104 & I/O handling   |
+
+---
+
+## 🛠️ Status
+
+✅ Stabil untuk komunikasi dasar IEC 104  
+✅ Teruji dengan frame nyata dari master SCADA  
+🚧 Siap dikembangkan lebih lanjut:
+- Timestamp: CP56Time2a (TI 30/31)
+- Command control: TI 46
+- Event logging
+
+---
+
