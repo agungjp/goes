@@ -1,6 +1,9 @@
 #include "IEC104Slave.h"
 #include <string.h>
 
+#define DEBUG  // Hapus atau komentar untuk nonaktifkan log debug
+#include <string.h>
+
 SoftwareSerial SerialAT(10, 8);
 
 void IEC104Slave::begin() {
@@ -141,7 +144,18 @@ void IEC104Slave::listen() {
     Serial.println();
 
     if (len >= 6 && buf[0] == 0x68 && (buf[2] & 0x01) == 0) {
+      if (len >= 6 && buf[0] == 0x68 && (buf[2] & 0x01) == 0) {
       rxSeq = ((buf[3] << 7) | (buf[2] >> 1)) + 1;
+
+      uint16_t nsMaster = (buf[3] << 7) | (buf[2] >> 1);
+      uint16_t nrMaster = (buf[5] << 7) | (buf[4] >> 1);
+      #ifdef DEBUG
+  Serial.print("[DEBUG] Master NS: ");
+      Serial.print(nsMaster);
+      Serial.print(" | Master NR: ");
+        Serial.println(nrMaster);
+#endif
+    }
     }
 
     if (len == 6 && buf[0] == 0x68 && buf[2] == 0x01) {
@@ -154,7 +168,12 @@ void IEC104Slave::listen() {
       else if (buf[2] == 0x43) sendUFormat(0x83);
     }
 
-    if (len >= 15 && buf[6] == 0x64) {
+    if (len >= 15 && buf[6] == 0x64)
+    // Handle TI 103 - RTC Sync
+    if (len >= 13 && buf[6] == 0x67) {
+      setRTCFromCP56(&buf[12]);
+    }
+ {
       byte ca_lo = buf[10];
       byte ca_hi = buf[11];
       updateInputs();
@@ -203,17 +222,26 @@ void IEC104Slave::handleTI46(const byte* d, byte len) {
   sendIFrame(term, sizeof(term));
 }
 
-void IEC104Slave::triggerRelay(byte command) {
-  if (command == 1) {
-    Serial.println("[TI46] CB OPEN → Relay PD6 ON");
-    digitalWrite(PIN_OPEN, HIGH);
-    delay(800);
-    digitalWrite(PIN_OPEN, LOW);
-  }
-  else if (command == 2) {
-    Serial.println("[TI46] CB CLOSE → Relay PD7 ON");
-    digitalWrite(PIN_CLOSE, HIGH);
-    delay(800);
-    digitalWrite(PIN_CLOSE, LOW);
-  }
+void IEC104Slave::setRTCFromCP56(const byte* time) {
+  uint16_t ms = time[0] | (time[1] << 8);
+  byte minute = time[2] & 0x3F;
+  byte hour = time[3] & 0x1F;
+  byte date = time[4] & 0x1F;
+  byte dow = (time[4] >> 5) & 0x07;
+  byte month = time[5] & 0x0F;
+  byte year = 2000 + (time[6] & 0x7F);
+
+  rtc.setDOW(dow);
+  rtc.setDate(date, month, year);
+  rtc.setTime(hour, minute, ms / 1000);
+
+  #ifdef DEBUG
+  Serial.print("[TI103] RTC Disinkron: ");
+  Serial.print(date); Serial.print("/");
+  Serial.print(month); Serial.print("/");
+  Serial.print(year); Serial.print(" ");
+  Serial.print(hour); Serial.print(":");
+  Serial.print(minute); Serial.print(":");
+  Serial.println(ms / 1000);
+  #endif
 }

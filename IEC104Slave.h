@@ -11,6 +11,7 @@ public:
   void loop();
 
 private:
+  void setRTCFromCP56(const byte* time);
   void setupConnection();
   void setupPins();
   void updateInputs();
