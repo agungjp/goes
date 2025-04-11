@@ -2,7 +2,7 @@
 
 Proyek ini adalah implementasi protokol **IEC 60870-5-104** menggunakan **Arduino UNO** untuk keperluan komunikasi SCADA, khususnya sebagai **slave/server**.
 
-Versi ini adalah pengembangan dari `v1.4.2` dengan tambahan:
+Versi ini adalah pengembangan dari `v1.4.3` dengan tambahan:
 - ✨ perbaikan program
 
 ---

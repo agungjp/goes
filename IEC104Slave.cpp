@@ -3,12 +3,21 @@
 
 #define DEBUG
 
+// #define SET_MANUAL_RTC
+
 IEC104Slave::IEC104Slave(Stream* serial) {
   modem = serial;
 }
 
 void IEC104Slave::begin() {
   rtc.begin();
+
+#ifdef SET_MANUAL_RTC
+  rtc.setDOW(5);                   // 1.senin 2.selasa 3.rabu 4.kamis 5.jumat 6.sabtu 7.minggu
+  rtc.setDate(11, 4, 2025);        // Contoh: 10 Mei 2024
+  rtc.setTime(17, 30, 00);         // Contoh: 14:33:00
+#endif
+
   setupPins();
   setupConnection();
 
@@ -16,6 +25,15 @@ void IEC104Slave::begin() {
   prevRemote = remote;
   prevGFD = gfd;
   prevCB = cb;
+}
+
+void IEC104Slave::restartModem() {
+  Serial.println("🔁 Restarting modem via D9...");
+  digitalWrite(MODEM_POWER_PIN, HIGH);
+  delay(500);
+  digitalWrite(MODEM_POWER_PIN, LOW);
+  delay(500);
+  Serial.println("✅ Restart done.");
 }
 
 void IEC104Slave::run() {
@@ -30,13 +48,16 @@ void IEC104Slave::setupPins() {
   pinMode(PIN_GFD, INPUT_PULLUP);
   pinMode(PIN_CB1, INPUT_PULLUP);
   pinMode(PIN_CB2, INPUT_PULLUP);
+  pinMode(MODEM_POWER_PIN, OUTPUT);
   pinMode(PIN_OPEN, OUTPUT);
   pinMode(PIN_CLOSE, OUTPUT);
   digitalWrite(PIN_OPEN, LOW);
   digitalWrite(PIN_CLOSE, LOW);
+  digitalWrite(MODEM_POWER_PIN, LOW);
 }
 
 void IEC104Slave::setupConnection() {
+  restartModem();
   delay(15000);
   modem->println("AT"); updateSerial(); delay(5000);
   modem->println("AT+CGATT=1"); updateSerial();
@@ -165,30 +186,84 @@ void IEC104Slave::sendUFormat(byte controlByte) {
 
 void IEC104Slave::listen() {
   static byte buf[MAX_BUFFER];
+  static String modemText = "";
   int len = 0;
 
-  if (modem->available()) {
-    while (modem->available() && len < MAX_BUFFER) {
+  while (modem->available()) {
+    char c = modem->read();
+
+    // Teks dari modem (detect CLOSED / CONNECT)
+    if (c == '\n' || c == '\r') {
+      if (modemText.length() > 0) {
+        modemText.trim();
+        handleModemText(modemText);
+        modemText = "";
+      }
+    } else {
+      modemText += c;
+    }
+
+    // IEC 104 frame
+    if ((byte)c == 0x68 && len == 0) {
+      buf[len++] = c;
       delayMicroseconds(1500);
-      buf[len++] = modem->read();
-    }
+      while (modem->available() && len < MAX_BUFFER) {
+        buf[len++] = modem->read();
+        delayMicroseconds(1500);
+      }
 
-    Serial.print("Master : NS ("); Serial.print(ns); Serial.print(") NR("); Serial.print(nr); Serial.print(")     → ");
-    for (int i = 0; i < len; i++) {
-      if (buf[i] < 0x10) Serial.print("0");
-      Serial.print(buf[i], HEX); Serial.print(" ");
-    }
-    Serial.println();
+      // Display frame
+      if (len >= 6) {
+        Serial.print("Master : ");
+        for (int i = 0; i < len; i++) {
+          if (buf[i] < 0x10) Serial.print("0");
+          Serial.print(buf[i], HEX); Serial.print(" ");
+        }
+        Serial.println();
 
-    if (len >= 6 && buf[0] == 0x68 && (buf[2] & 0x01) == 0) {
-      handleIFrame(buf, len);
-    } else if (len == 6 && buf[0] == 0x68 && buf[2] == 0x01) {
-      handleSFrame(buf);
-    } else if (len >= 6 && buf[0] == 0x68 && buf[1] == 0x04) {
-      handleUFrame(buf);
+        // STARTDT_ACT → response STARTDT_CON
+        if (buf[1] == 0x04 && buf[2] == 0x07) {
+          sendUFormat(0x0B);  // STARTDT_CON
+          connectionState = 2;
+          delay(100);
+          begin();
+          delay(5000);
+          sendTimestamped(30, 1001, remote ? 0 : 1);
+          delay(1000);
+          sendTimestamped(30, 1002, gfd ? 1 : 0);
+          delay(1000);
+          sendTimestamped(31, 11000, cb);
+          delay(1000);
+        }
+
+        // Handle I/S/U-frame
+        else if ((buf[2] & 0x01) == 0) {
+          handleIFrame(buf, len);
+        }
+        else if (buf[2] == 0x01) {
+          handleSFrame(buf);
+        }
+        else if (buf[1] == 0x04) {
+          handleUFrame(buf);
+        }
+      }
     }
   }
 }
+
+void IEC104Slave::handleModemText(String text) {
+  Serial.println("📡 MODEM: " + text);
+  text.toUpperCase();
+
+  if (text.indexOf("CLOSED") >= 0) {
+    connectionState = 0;
+    Serial.println("⚠️  Koneksi terputus.");
+  }
+  else if (text.indexOf("REMOTE IP") >= 0 || text.indexOf("CONNECT") >= 0) {
+    connectionState = 1;
+    Serial.println("🔄 Modem CONNECTED. Menunggu STARTDT_ACT...");
+  }
+} 
 
 void IEC104Slave::handleIFrame(const byte* buf, byte len) {
   // Ambil NS dan NR dari frame yang diterima

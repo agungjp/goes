@@ -7,7 +7,7 @@ IEC104Slave slave(&modem);             // Konstruktor pakai Stream*
 void setup() {
   Serial.begin(9600);
   modem.begin(9600);
-  Serial.println(F("GOES - IEC 60870-5-104 Slave v1.4.2"));
+  Serial.println(F("GOES - IEC 60870-5-104 Slave v1.4.3"));
   slave.begin();
 }
 

@@ -30,6 +30,8 @@ private:
   void convertCP56Time2a(uint8_t* buffer);
   void triggerRelay(byte command);
   void updateSerial();
+  void handleModemText(String text);
+  void restartModem();
 
   DS3231 rtc = DS3231(SDA, SCL);
   Stream* modem = nullptr;
@@ -39,6 +41,7 @@ private:
   bool prevRemote = false, remote = false;
   bool prevGFD = false, gfd = false;
   byte prevCB = 0, cb = 0;
+  int connectionState = 0; // 0 = disconnected, 1 = waiting STARTDT, 2 = connected
 
   const int PIN_REMOTE = 2;
   const int PIN_GFD = 3;
@@ -46,6 +49,7 @@ private:
   const int PIN_CB2 = 5;
   const int PIN_OPEN = 6;
   const int PIN_CLOSE = 7;
+  const int MODEM_POWER_PIN = 9;
 
   static const int MAX_BUFFER = 64;
 };
