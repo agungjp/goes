@@ -1,4 +1,3 @@
-
 #include "IEC104Slave.h"
 #include <string.h>
 
@@ -59,7 +58,7 @@ void IEC104Slave::updateInputs() {
   prevGFD = gfd;
   prevCB = cb;
 
-  remote = digitalRead(PIN_REMOTE) == HIGH; // HIGH = Local, LOW = Remote
+  remote = digitalRead(PIN_REMOTE) == LOW; // HIGH = Local; LOW = Remote
   gfd = digitalRead(PIN_GFD);
 
   bool cb1 = digitalRead(PIN_CB1);
@@ -74,7 +73,7 @@ void IEC104Slave::checkCOS() {
   // Serial.println("[DEBUG] Memeriksa COS...");
   if (remote != prevRemote) {
     Serial.print("[DEBUG] Remote berubah: "); Serial.print(prevRemote); Serial.print(" → "); Serial.println(remote);
-    sendTimestamped(30, 1001, remote ? 1 : 0);
+    sendTimestamped(30, 1001, remote ? 0 : 1);
     prevRemote = remote;
   }
   if (gfd != prevGFD) {
@@ -134,7 +133,7 @@ void IEC104Slave::sendTimestamped(byte ti, uint16_t ioa, byte value) {
 void IEC104Slave::sendIFrame(const byte* payload, byte len) {
   byte frame[6 + len];
   frame[0] = 0x68;
-  frame[1] = len;
+  frame[1] = len+4;
   frame[2] = txSeq << 1;
   frame[3] = txSeq >> 7;
   frame[4] = rxSeq << 1;
@@ -239,7 +238,7 @@ void IEC104Slave::handleGI(const byte* buf, byte len) {
 
   byte ti1[] = {
     0x01, 0x02, 0x14, 0x00, ca_lo, ca_hi,
-    0xE9, 0x03, 0x00, remote ? 1 : 0,
+    0xE9, 0x03, 0x00, remote ? 0 : 1,
     0xEA, 0x03, 0x00, gfd ? 1 : 0
   };
   sendIFrame(ti1, sizeof(ti1)); delay(50);
@@ -255,26 +254,40 @@ void IEC104Slave::handleGI(const byte* buf, byte len) {
 }
 
 void IEC104Slave::handleTI46(const byte* d, byte len) {
-  if (len < 11) return;
-  uint16_t ioa = d[6] | (d[7] << 8);
+
+  // ✅ Perbaikan: IOA pakai 3 byte (little-endian)
+  uint32_t ioa = d[6] | (d[7] << 8) | (d[8] << 16);
   byte sco = d[9] & 0x03;
 
+  Serial.print("[TI46] IOA: ");
+  Serial.print(ioa);
+  Serial.print(" | SCO: ");
+  Serial.println(sco);
+
   if (!remote) {
-    Serial.println("[REJECT] LOCAL mode");
+    Serial.println("[REJECT] Mode LOCAL");
   } else if ((sco == 1 && cb == 1) || (sco == 2 && cb == 2)) {
-    Serial.println("[REJECT] CB status sudah sesuai");
+    Serial.println("[REJECT] Status CB sudah sesuai");
   } else if (sco == 1 || sco == 2) {
     triggerRelay(sco);
   } else {
     Serial.println("[REJECT] SCO tidak valid");
   }
 
-  byte ack[11] = {0x2E, 0x01, 0x07, 0x00, 0x01, 0x00,
-    (byte)(ioa & 0xFF), (byte)(ioa >> 8), 0x00, sco};
+  // ✅ Kirim ACK (COT = 7)
+  byte ack[] = {
+    0x2E, 0x01, 0x07, 0x00, 0x01, 0x00,
+    (byte)(ioa & 0xFF), (byte)((ioa >> 8) & 0xFF), (byte)((ioa >> 16) & 0xFF),
+    sco
+  };
   sendIFrame(ack, sizeof(ack)); delay(50);
 
-  byte term[11] = {0x2E, 0x01, 0x0A, 0x00, 0x01, 0x00,
-    (byte)(ioa & 0xFF), (byte)(ioa >> 8), 0x00, sco};
+  // ✅ Kirim Termination (COT = 10)
+  byte term[] = {
+    0x2E, 0x01, 0x0A, 0x00, 0x01, 0x00,
+    (byte)(ioa & 0xFF), (byte)((ioa >> 8) & 0xFF), (byte)((ioa >> 16) & 0xFF),
+    sco
+  };
   sendIFrame(term, sizeof(term));
 }
 
