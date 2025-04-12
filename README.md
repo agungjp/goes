@@ -2,8 +2,15 @@
 
 Proyek ini adalah implementasi protokol **IEC 60870-5-104** menggunakan **Arduino UNO** untuk keperluan komunikasi SCADA, khususnya sebagai **slave/server**.
 
-Versi ini adalah pengembangan dari `v1.4.3` dengan tambahan:
-- ✨ perbaikan program
+Versi ini adalah pengembangan dari `v1.4.2` dengan tambahan:
+- 🔁 Sinkronisasi NS/NR dari master (fix parsing)
+- ⏱️ Perbaikan parsing waktu CP56Time2a
+- 🛡️ Perbaikan validasi IOA untuk TI 46
+- 🧠 Perbaikan COS agar hanya kirim jika ada perubahan
+- 📶 Penanganan reconnect jika modem `CLOSED` / `REMOTE IP`
+- 🕒 Sinkronisasi waktu dari SCADA (TI 103)
+- ⚙️ Setting manual RTC dan opsi sync dari SCADA via `#define`
+- 🧪 Debug tambahan dengan `#define DEBUG`
 
 ---
 
@@ -29,7 +36,7 @@ Versi ini adalah pengembangan dari `v1.4.3` dengan tambahan:
 
 ---
 
-## 3. 🧩 FITUR FINAL v1.4.0
+## 3. 🧩 FITUR FINAL v1.4.3
 
 | Fitur                                               | Status |
 |-----------------------------------------------------|--------|
@@ -46,6 +53,10 @@ Versi ini adalah pengembangan dari `v1.4.3` dengan tambahan:
 | RTC Sync dari master (TI 103)                       | ✅     |
 | Struktur class modular (IEC104Slave)                | ✅     |
 | Log debug NS/NR dan RTC (opsional #define DEBUG)    | ✅     |
+| Reconnect otomatis jika koneksi TCP terputus        | ✅     |
+| Kirim ulang status setelah reconnect                | ✅     |
+| Opsi sinkronisasi waktu dari SCADA (`#define`)      | ✅     |
+| Manual set RTC waktu saat startup (`#define`)       | ✅     |
 
 ---
 
@@ -69,7 +80,7 @@ Versi ini adalah pengembangan dari `v1.4.3` dengan tambahan:
 | 30   | 1001    | Remote/Local (SP+Time)   |
 | 30   | 1002    | GFD                      |
 | 31   | 11000   | CB Status (DP+Time)      |
-| 46   | 23000*  | Double Command           |
+| 46   | 23000   | Double Command (Open/Close) |
 
 ---
 
@@ -92,6 +103,8 @@ Versi ini adalah pengembangan dari `v1.4.3` dengan tambahan:
 | 64       | General Interrogation (TI 100)         |
 | 46       | Double Command                         |
 | 67       | RTC Sync (TI 103)                      |
+| 1, 3     | DI (SP/DP tanpa waktu)                 |
+| 30, 31   | DI (SP/DP dengan waktu CP56Time2a)     |
 | U-Format | STARTDT_ACT, TEST_ACT                  |
 | S-Format | ACK Frame (update txSeq)               |
 
@@ -106,7 +119,7 @@ Perintah hanya dieksekusi jika:
 - Status CB berbeda dari perintah  
 - SCO valid (1 = OPEN, 2 = CLOSE)
 
-> Tetap kirim **ACK** dan **Termination** meskipun perintah ditolak.
+Tetap kirim **ACK** dan **Termination** meskipun perintah ditolak.
 
 ---
 
@@ -123,16 +136,14 @@ Akan otomatis mengirim TI 30 atau TI 31 + timestamp CP56Time2a.
 
 ### c. ⏱️ TIMESTAMP (CP56Time2a)
 
-| Byte | Keterangan                |
-|------|---------------------------|
-| 0–1  | Millisecond (little endian) |
-| 2    | Minute                    |
-| 3    | Hour                      |
-| 4    | Date + Day of Week        |
-| 5    | Month                     |
-| 6    | Year (offset 2000)        |
-
-Digunakan untuk semua frame TI 30 / 31 dan COS.
+| Byte | Keterangan                  |
+|------|-----------------------------|
+| 0–1  | Millisecond (Little Endian) |
+| 2    | Minute (6-bit)              |
+| 3    | Hour (5-bit)                |
+| 4    | Date (5-bit) + DayOfWeek    |
+| 5    | Month (4-bit)               |
+| 6    | Year (offset 2000)          |
 
 ---
 
@@ -150,4 +161,32 @@ Digunakan untuk semua frame TI 30 / 31 dan COS.
 - Slave menerima frame TI 103 dari SCADA  
 - Waktu diambil dari CP56Time2a (7 byte)  
 - RTC DS3231 langsung di-set ke waktu terbaru  
-- Output:
+- Tambahan debug waktu jika `#define DEBUG`
+
+---
+
+### f. 🔌 DETEKSI RECONNECT
+
+- Deteksi teks `CLOSED`, `REMOTE IP`, atau `CONNECT` dari modem
+- Tunggu `STARTDT_ACT` setelah reconnect
+- Kirim `STARTDT_CON`
+- Kirim ulang semua status DI: TI 30 dan TI 31
+
+---
+
+## 📑 CHANGELOG
+
+### v1.4.3 – (Build Terbaru)
+- Perbaikan NS sinkron dari NR master
+- Validasi IOA TI 46 diperbaiki
+- COS hanya kirim jika ada perubahan
+- Perbaikan padding length PDU
+- Tambah fitur reconnect (deteksi teks modem)
+- Kirim ulang status saat reconnect
+- Tambah sinkronisasi waktu dari TI 103
+- Tambah definisi waktu manual (via `#define`)
+- Debug NS/NR & CP56Time2a
+
+---
+
+> Untuk bantuan pengujian atau dokumentasi tambahan, silakan hubungi via komentar proyek ini!
