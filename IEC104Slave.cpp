@@ -57,7 +57,6 @@ void IEC104Slave::setupPins() {
 }
 
 void IEC104Slave::setupConnection() {
-  restartModem();
   delay(15000);
   modem->println("AT"); updateSerial(); delay(5000);
   modem->println("AT+CGATT=1"); updateSerial();
@@ -214,7 +213,7 @@ void IEC104Slave::listen() {
 
       // Display frame
       if (len >= 6) {
-        Serial.print("Master : ");
+        Serial.print("Master : NS ("); Serial.print(ns); Serial.print(") NR("); Serial.print(nr); Serial.print(").    → ");
         for (int i = 0; i < len; i++) {
           if (buf[i] < 0x10) Serial.print("0");
           Serial.print(buf[i], HEX); Serial.print(" ");
@@ -222,10 +221,11 @@ void IEC104Slave::listen() {
         Serial.println();
 
         // STARTDT_ACT → response STARTDT_CON
-        if (buf[1] == 0x04 && buf[2] == 0x07) {
+        if (buf[1] == 0x04 && buf[2] == 0x07 && connectionState == 2) {
           sendUFormat(0x0B);  // STARTDT_CON
           connectionState = 2;
           delay(100);
+          restartModem();
           begin();
           delay(5000);
           sendTimestamped(30, 1001, remote ? 0 : 1);
@@ -251,7 +251,16 @@ void IEC104Slave::listen() {
   }
 }
 
+
 void IEC104Slave::handleModemText(String text) {
+  text.toUpperCase();
+  if (text.indexOf("CLOSED") >= 0) {
+    connectionState = 1;
+    Serial.println("⚠️ Koneksi CLOSED. Siap reconnect...");
+  } else if ((text.indexOf("REMOTE IP") >= 0 || text.indexOf("CONNECT") >= 0) && connectionState == 1) {
+    connectionState = 2;
+    Serial.println("🔌 CONNECT terdeteksi. Menunggu STARTDT_ACT...");
+  }
   Serial.println("📡 MODEM: " + text);
   text.toUpperCase();
 

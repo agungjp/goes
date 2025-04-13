@@ -189,4 +189,24 @@ Akan otomatis mengirim TI 30 atau TI 31 + timestamp CP56Time2a.
 
 ---
 
-> Untuk bantuan pengujian atau dokumentasi tambahan, silakan hubungi via komentar proyek ini!
+[Modem CONNECTED]
+     ↓
+[WAITING STARTDT_ACT]
+     ↓
+[STARTDT_ACT] ← Master
+     ↓
+[STARTDT_CON] → Slave
+     ↓
+[SEND status TI 30, TI 31]
+     ↓
+[Interrogation] ← Master
+     ↓
+[SEND ACT_CON, TI 1, TI 3, TERM]
+     ↓
+[TI 46 command] ← Master
+     ↓
+[Relay action + ACK + TERM] → Slave
+     ↓
+[TI 103 sync time] ← Master
+     ↓
+[RTC updated]
