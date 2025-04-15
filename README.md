@@ -118,21 +118,7 @@ Versi ini adalah pengembangan dari `v1.4.3` dengan tambahan dan penyempurnaan:
 
 ---
 
-## 8. 🧠 LOGIKA `handleRTC()` TI 103
-
-```cpp
-void IEC104Slave::handleRTC(const byte* buf, byte len) {
-  const byte* time = &buf[15];         // Ambil 7 byte CP56Time2a
-  setRTCFromCP56(time);                // Set RTC dari data master
-  byte ack[16] = {
-    0x67, 0x01, 0x07, 0x00,            // TI=103, VSQ=1, COT=7 (ACK)
-    0x01, 0x00, 0x00, 0x00, 0x00       // CA=1, IOA=0
-  };
-  memcpy(&ack[9], time, 7);            // Salin CP56Time2a ke posisi benar
-  sendIFrame(ack, sizeof(ack));        // Kirim balasan ke master
-}```
-
- ## 9. 🔁 FLOW NS / NR
+ ## 8. 🔁 FLOW NS / NR
 	•	rxSeq ← dari NS master (I-format)
 	•	txSeq ← dari NR master (S-format)
 	•	Sinkron otomatis
@@ -147,7 +133,7 @@ void IEC104Slave::handleRTC(const byte* buf, byte len) {
 → Kirim ulang status (TI 30, 31)
 
 
- ## 10. 📑 CHANGELOG RINGKAS – v1.4.4
+ ## 9. 📑 CHANGELOG RINGKAS – v1.4.4
 
 	•	✅ Penambahan fungsi sinkronisasi waktu (TI 103)
 	•	✅ Perbaikan parsing CP56Time2a dan penempatan memcpy(&ack[9], ...)
