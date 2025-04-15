@@ -130,9 +130,9 @@ void IEC104Slave::handleRTC(const byte* buf, byte len) {
   };
   memcpy(&ack[9], time, 7);            // Salin CP56Time2a ke posisi benar
   sendIFrame(ack, sizeof(ack));        // Kirim balasan ke master
-}
+}```
 
-## 9. 🔁 FLOW NS / NR
+ ## 9. 🔁 FLOW NS / NR
 	•	rxSeq ← dari NS master (I-format)
 	•	txSeq ← dari NR master (S-format)
 	•	Sinkron otomatis
@@ -147,7 +147,7 @@ void IEC104Slave::handleRTC(const byte* buf, byte len) {
 → Kirim ulang status (TI 30, 31)
 
 
-## 11. 📑 CHANGELOG RINGKAS – v1.4.4
+ ## 10. 📑 CHANGELOG RINGKAS – v1.4.4
 
 	•	✅ Penambahan fungsi sinkronisasi waktu (TI 103)
 	•	✅ Perbaikan parsing CP56Time2a dan penempatan memcpy(&ack[9], ...)
