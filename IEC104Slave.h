@@ -1,5 +1,24 @@
+/*=============================================================================|
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.4.4  |
+|==============================================================================|
+|  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
+|  All rights reserved.                                                        |
+|==============================================================================|
+|  IEC 60870-5-104 Arduino Slave is free software: you can redistribute it     |
+|  and/or modify it under the terms of the Lesser GNU General Public License   |
+|  as published by the Free Software Foundation, either version 3 of the       |
+|  License, or (at your option) any later version.                             |
+|                                                                              |
+|  This program is distributed in the hope that it will be useful,             |
+|  but WITHOUT ANY WARRANTY; without even the implied warranty of              |
+|  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                        |
+|  See the Lesser GNU General Public License for more details.                 |
+|==============================================================================*/
+
 #ifndef IEC104SLAVE_H
 #define IEC104SLAVE_H
+#define DEBUG
+// #define SET_MANUAL_RTC
 
 #include <Arduino.h>
 #include <SoftwareSerial.h>
@@ -12,7 +31,7 @@ public:
   void run();
 
 private:
-  void handleRTC(const byte* time);
+  void handleRTC(const byte* buf, byte len);
   void handleIFrame(const byte* buf, byte len);
   void handleSFrame(const byte* buf);
   void handleUFrame(const byte* buf);

@@ -1,9 +1,22 @@
+/*=============================================================================|
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.4.4  |
+|==============================================================================|
+|  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
+|  All rights reserved.                                                        |
+|==============================================================================|
+|  IEC 60870-5-104 Arduino Slave is free software: you can redistribute it     |
+|  and/or modify it under the terms of the Lesser GNU General Public License   |
+|  as published by the Free Software Foundation, either version 3 of the       |
+|  License, or (at your option) any later version.                             |
+|                                                                              |
+|  This program is distributed in the hope that it will be useful,             |
+|  but WITHOUT ANY WARRANTY; without even the implied warranty of              |
+|  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                        |
+|  See the Lesser GNU General Public License for more details.                 |
+|==============================================================================*/
+
 #include "IEC104Slave.h"
 #include <string.h>
-
-#define DEBUG
-
-// #define SET_MANUAL_RTC
 
 IEC104Slave::IEC104Slave(Stream* serial) {
   modem = serial;
@@ -19,6 +32,7 @@ void IEC104Slave::begin() {
 #endif
 
   setupPins();
+  restartModem();
   setupConnection();
 
   updateInputs();
@@ -130,13 +144,28 @@ void IEC104Slave::convertCP56Time2a(uint8_t* buffer) {
 }
 
 void IEC104Slave::setRTCFromCP56(const byte* time) {
-  uint16_t ms = time[0] | (time[1] << 8);
-  byte minute = time[2] & 0x3F;
-  byte hour = time[3] & 0x1F;
-  byte date = time[4] & 0x1F;
-  byte dow = (time[4] >> 5) & 0x07;
-  byte month = time[5] & 0x0F;
-  byte year = 2000 + (time[6] & 0x7F);
+  uint16_t ms     = time[0] | (time[1] << 8);     // byte 0-1: millisecond
+  byte minute     = time[2] & 0x3F;               // byte 2: 0-5 bit minute
+  byte hour       = time[3] & 0x1F;               // byte 3: 0-4 bit hour
+  byte date       = time[4] & 0x1F;               // byte 4: 0-4 bit date
+  byte dow        = (time[4] >> 5) & 0x07;        // byte 4: 5-7 bit day of week
+  byte month      = time[5] & 0x0F;               // byte 5: 0-3 bit month
+  uint16_t year       = 2000 + (time[6] & 0x7F);      // byte 6: 0-6 bit year
+
+  Serial.print("🕒 RTC diatur ke: ");
+  Serial.print(year); Serial.print("-");
+  if (month < 10) Serial.print("0");
+  Serial.print(month); Serial.print("-");
+  if (date < 10) Serial.print("0");
+  Serial.print(date); Serial.print(" ");
+  if (hour < 10) Serial.print("0");
+  Serial.print(hour); Serial.print(":");
+  if (minute < 10) Serial.print("0");
+  Serial.print(minute); Serial.print(":");
+  if ((ms / 1000) < 10) Serial.print("0");
+  Serial.print(ms / 1000);
+  Serial.print(" (DOW: "); Serial.print(dow); Serial.println(")");
+
   rtc.setDOW(dow);
   rtc.setDate(date, month, year);
   rtc.setTime(hour, minute, ms / 1000);
@@ -169,6 +198,7 @@ void IEC104Slave::sendIFrame(const byte* payload, byte len) {
   }
   Serial.println();
 #endif
+  delay(100);
 }
 
 void IEC104Slave::sendUFormat(byte controlByte) {
@@ -180,8 +210,8 @@ void IEC104Slave::sendUFormat(byte controlByte) {
     Serial.print(r[i], HEX); Serial.print(" ");
   }
   Serial.println();
+  delay(50);
 }
-
 
 void IEC104Slave::listen() {
   static byte buf[MAX_BUFFER];
@@ -191,66 +221,52 @@ void IEC104Slave::listen() {
   while (modem->available()) {
     char c = modem->read();
 
-    // Teks dari modem (detect CLOSED / CONNECT)
+    // Teks dari modem
     if (c == '\n' || c == '\r') {
       if (modemText.length() > 0) {
         modemText.trim();
         handleModemText(modemText);
         modemText = "";
       }
-    } else {
+    } else if ((byte)c != 0x68) {
       modemText += c;
+      continue;
     }
 
-    // IEC 104 frame
-    if ((byte)c == 0x68 && len == 0) {
-      buf[len++] = c;
-      delayMicroseconds(1500);
-      while (modem->available() && len < MAX_BUFFER) {
-        buf[len++] = modem->read();
-        delayMicroseconds(1500);
+    // Frame IEC 104 diawali 0x68
+    if ((byte)c == 0x68) {
+      buf[0] = 0x68;
+      while (modem->available() < 1);  // tunggu 1 byte
+      byte length = modem->read();
+      buf[1] = length;
+
+      for (int i = 0; i < length; i++) {
+        while (!modem->available());
+        buf[2 + i] = modem->read();
       }
 
-      // Display frame
-      if (len >= 6) {
-        Serial.print("Master : NS ("); Serial.print(ns); Serial.print(") NR("); Serial.print(nr); Serial.print(").    → ");
-        for (int i = 0; i < len; i++) {
-          if (buf[i] < 0x10) Serial.print("0");
-          Serial.print(buf[i], HEX); Serial.print(" ");
-        }
-        Serial.println();
+      len = length + 2;
 
-        // STARTDT_ACT → response STARTDT_CON
-        if (buf[1] == 0x04 && buf[2] == 0x07 && connectionState == 2) {
-          sendUFormat(0x0B);  // STARTDT_CON
-          connectionState = 2;
-          delay(100);
-          restartModem();
-          begin();
-          delay(5000);
-          sendTimestamped(30, 1001, remote ? 0 : 1);
-          delay(1000);
-          sendTimestamped(30, 1002, gfd ? 1 : 0);
-          delay(1000);
-          sendTimestamped(31, 11000, cb);
-          delay(1000);
-        }
-
-        // Handle I/S/U-frame
-        else if ((buf[2] & 0x01) == 0) {
-          handleIFrame(buf, len);
-        }
-        else if (buf[2] == 0x01) {
-          handleSFrame(buf);
-        }
-        else if (buf[1] == 0x04) {
-          handleUFrame(buf);
-        }
+      // Tampilkan frame
+      Serial.print("Master : NS ("); Serial.print(ns);
+      Serial.print(") NR("); Serial.print(nr); Serial.print(").    → ");
+      for (int i = 0; i < len; i++) {
+        if (buf[i] < 0x10) Serial.print("0");
+        Serial.print(buf[i], HEX); Serial.print(" ");
+      }
+      Serial.println();
+      if ((buf[2] & 0x01) == 0) {
+        handleIFrame(buf, len);
+      }
+      else if (buf[2] == 0x01) {
+        handleSFrame(buf);
+      }
+      else if (buf[1] == 0x04) {
+        handleUFrame(buf);
       }
     }
   }
 }
-
 
 void IEC104Slave::handleModemText(String text) {
   text.toUpperCase();
@@ -296,7 +312,7 @@ void IEC104Slave::handleIFrame(const byte* buf, byte len) {
   byte ti = buf[6];
   switch (ti) {
     case 100: handleGI(buf, len); break;
-    case 103: handleRTC(&buf[12]); break;
+    case 103: handleRTC(buf, len); break;  // <--- Ini untuk TI 103
     case 46:  handleTI46(&buf[6], len - 6); break;
     default: break;
   }
@@ -375,8 +391,28 @@ void IEC104Slave::handleTI46(const byte* d, byte len) {
   sendIFrame(term, sizeof(term));
 }
 
-void IEC104Slave::handleRTC(const byte* time) {
+void IEC104Slave::handleRTC(const byte* buf, byte len) {
+  const byte* time = &buf[15];
+
+  Serial.print("🔍 Data CP56Time2a: ");
+  for (int i = 0; i < 7; i++) {
+    if (time[i] < 0x10) Serial.print("0");
+    Serial.print(time[i], HEX); Serial.print(" ");
+  }
+  Serial.println();
+
   setRTCFromCP56(time);
+
+  // Kirim balasan ACK – TI 103, COT = 7
+  byte ack[16] = {
+    0x67, 0x01,       // TI = 103, VSQ = 1
+    0x07, 0x00,       // COT = 7
+    0x01, 0x00,       // CA = 1
+    0x00, 0x00, 0x00  // IOA = 0
+  };
+
+  memcpy(&ack[9], time, 7);  // Salin CP56Time2a
+  sendIFrame(ack, sizeof(ack));
 }
 
 void IEC104Slave::triggerRelay(byte command) {
