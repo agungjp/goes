@@ -39,6 +39,6 @@ void loop() {
   if (millis() - lastTestAct > TEST_ACT_TIMEOUT) {
     Serial.println(F("⚠️  Tidak ada TESTFR_ACT >5 menit → hardware reset..."));
     wdt_enable(WDTO_15MS);   // WDT timeout ~15 ms
-    while (1) { }            // tunggu WDT memicu reset
+    while (1) { delay(50);}            // tunggu WDT memicu reset
   }
 }
