@@ -18,11 +18,11 @@
 #include <SoftwareSerial.h>
 #include "IEC104Slave.h"
 
-SoftwareSerial modem(10, 8);           // TX, RX ke modem
+SoftwareSerial modem(10, 8);           // TX=10 → RX_modem, RX=8 ← TX_modem
 IEC104Slave slave(&modem);             // Konstruktor pakai Stream*
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200); //debug
   modem.begin(9600);
   Serial.println(F("GOES - IEC 60870-5-104 Slave v1.4.4"));
   slave.begin();

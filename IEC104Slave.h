@@ -33,8 +33,8 @@ public:
 private:
   void handleRTC(const byte* buf, byte len);
   void handleIFrame(const byte* buf, byte len);
-  void handleSFrame(const byte* buf);
-  void handleUFrame(const byte* buf);
+  void handleSFrame(const byte* buf, byte len);
+  void handleUFrame(const byte* buf, byte len);
   void handleGI(const byte* buf, byte len);
   void setRTCFromCP56(const byte* time);
   void setupConnection();
