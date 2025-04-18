@@ -17,6 +17,7 @@
 
 #include "IEC104Slave.h"
 #include <string.h>
+extern unsigned long lastTestAct;
 
 IEC104Slave::IEC104Slave(Stream* serial) {
   modem = serial;
@@ -73,7 +74,7 @@ void IEC104Slave::setupConnection() {
 }
 
 void IEC104Slave::updateSerial() {
-  // delay(2000);
+  delay(2000);
   while (modem->available()) Serial.write(modem->read());
   while (Serial.available()) modem->write(Serial.read());
 }
@@ -138,19 +139,16 @@ void IEC104Slave::listen() {
     char c = modem->read();
 
     // Teks dari modem
-    // if (c == '\n' || c == '\r') {
-    //   if (modemText.length() > 0) {
-    //     modemText.trim();
-    //     handleModemText(modemText);
-    //     modemText = "";
-    //   }
-    // } else if ((byte)c != 0x68) {
-    //   modemText += c;
-    //   continue;
-    // }
-
-
-
+    if (c == '\n' || c == '\r') {
+      if (modemText.length() > 0) {
+        modemText.trim();
+        handleModemText(modemText);
+        modemText = "";
+      }
+    } else if ((byte)c != 0x68) {
+      modemText += c;
+      continue;
+    }
 
     // Frame IEC 104 diawali 0x68
     if ((byte)c == 0x68) {
@@ -185,52 +183,6 @@ void IEC104Slave::listen() {
       }
     }
   }
-}
-
-void IEC104Slave::convertCP56Time2a(uint8_t* buffer) {
-  Time t = rtc.getTime();
-  uint16_t ms = t.sec * 1000;
-  buffer[0] = ms & 0xFF;
-  buffer[1] = (ms >> 8) & 0xFF;
-  buffer[2] = t.min & 0x3F;
-  buffer[3] = t.hour & 0x1F;
-  buffer[4] = ((t.dow & 0x07) << 5) | (t.date & 0x1F);
-  buffer[5] = t.mon & 0x0F;
-  buffer[6] = (t.year - 2000) & 0x7F;
-}
-
-void IEC104Slave::sendIFrame(const byte* payload, byte len) {
-  byte frame[6 + len];
-  frame[0] = 0x68;
-  frame[1] = len+4;
-  frame[2] = txSeq << 1;
-  frame[3] = txSeq >> 7;
-  frame[4] = rxSeq << 1;
-  frame[5] = rxSeq >> 7;
-  memcpy(&frame[6], payload, len);
-  modem->write(frame, 6 + len);
-#ifdef DEBUG
-  Serial.print("Slave : NS ("); Serial.print(txSeq); Serial.print(") NR("); Serial.print(rxSeq); Serial.print(").    ← ");
-  for (int i = 0; i < 6 + len; i++) {
-    if (frame[i] < 0x10) Serial.print("0");
-    Serial.print(frame[i], HEX); Serial.print(" ");
-  }
-  Serial.println();
-#endif
-  txSeq++;
-  delay(100);
-}
-
-void IEC104Slave::sendUFormat(byte controlByte) {
-  byte r[6] = {0x68, 0x04, controlByte, 0x00, 0x00, 0x00};
-  modem->write(r, 6);
-  Serial.print("Slave (U-Format).    ← ");
-  for (int i = 0; i < 6; i++) {
-    if (r[i] < 0x10) Serial.print("0");
-    Serial.print(r[i], HEX); Serial.print(" ");
-  }
-  Serial.println();
-  delay(50);
 }
 
 void IEC104Slave::handleModemText(String text) {
@@ -274,13 +226,6 @@ void IEC104Slave::handleIFrame(const byte* buf, byte len) {
   // Perbarui txSeq mengikuti NR master
   txSeq = nr;
 
-// #ifdef DEBUG
-//   Serial.print("[DEBUG] Master NS: ");
-//   Serial.print(ns);
-//   Serial.print(" | Master NR: ");
-//   Serial.println(nr);
-// #endif
-
   // Proses sesuai Type Identification (TI)
   byte ti = buf[6];
   switch (ti) {
@@ -312,8 +257,13 @@ void IEC104Slave::handleUFrame(const byte* buf, byte len) {
     Serial.print(buf[i], HEX); Serial.print(" ");
   }
   Serial.println();
-  if (buf[2] == 0x07) sendUFormat(0x0B);
-  else if (buf[2] == 0x43) sendUFormat(0x83);
+  if (buf[2] == 0x07){
+    sendUFormat(0x0B);
+  }
+  else if (buf[2] == 0x43){
+    lastTestAct = millis();     // ← reset timer
+    sendUFormat(0x83);
+  }
 }
 
 void IEC104Slave::handleGI(const byte* buf, byte len) {
@@ -431,6 +381,18 @@ void IEC104Slave::setRTCFromCP56(const byte* time) {
   rtc.setTime(hour, minute, ms / 1000);
 }
 
+void IEC104Slave::convertCP56Time2a(uint8_t* buffer) {
+  Time t = rtc.getTime();
+  uint16_t ms = t.sec * 1000;
+  buffer[0] = ms & 0xFF;
+  buffer[1] = (ms >> 8) & 0xFF;
+  buffer[2] = t.min & 0x3F;
+  buffer[3] = t.hour & 0x1F;
+  buffer[4] = ((t.dow & 0x07) << 5) | (t.date & 0x1F);
+  buffer[5] = t.mon & 0x0F;
+  buffer[6] = (t.year - 2000) & 0x7F;
+}
+
 void IEC104Slave::sendTimestamped(byte ti, uint16_t ioa, byte value) {
   uint8_t cp56[7];
   convertCP56Time2a(cp56);
@@ -449,4 +411,38 @@ void IEC104Slave::triggerRelay(byte command) {
     delay(800);
     digitalWrite(PIN_CLOSE, LOW);
   }
+}
+
+void IEC104Slave::sendIFrame(const byte* payload, byte len) {
+  byte frame[6 + len];
+  frame[0] = 0x68;
+  frame[1] = len+4;
+  frame[2] = txSeq << 1;
+  frame[3] = txSeq >> 7;
+  frame[4] = rxSeq << 1;
+  frame[5] = rxSeq >> 7;
+  memcpy(&frame[6], payload, len);
+  modem->write(frame, 6 + len);
+#ifdef DEBUG
+  Serial.print("Slave : NS ("); Serial.print(txSeq); Serial.print(") NR("); Serial.print(rxSeq); Serial.print(").    ← ");
+  for (int i = 0; i < 6 + len; i++) {
+    if (frame[i] < 0x10) Serial.print("0");
+    Serial.print(frame[i], HEX); Serial.print(" ");
+  }
+  Serial.println();
+#endif
+  txSeq++;
+  delay(100);
+}
+
+void IEC104Slave::sendUFormat(byte controlByte) {
+  byte r[6] = {0x68, 0x04, controlByte, 0x00, 0x00, 0x00};
+  modem->write(r, 6);
+  Serial.print("Slave (U-Format).    ← ");
+  for (int i = 0; i < 6; i++) {
+    if (r[i] < 0x10) Serial.print("0");
+    Serial.print(r[i], HEX); Serial.print(" ");
+  }
+  Serial.println();
+  delay(50);
 }

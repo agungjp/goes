@@ -23,6 +23,7 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include <DS3231.h>
+#include <avr/wdt.h>    // untuk kontrol Watchdog Timer
 
 class IEC104Slave {
 public:

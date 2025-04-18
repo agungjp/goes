@@ -1,8 +1,9 @@
-# 📡 IEC 60870-5-104 Arduino Slave – v1.4.4
+# 📡 IEC 60870-5-104 Arduino Slave – v1.4.5
 
 Proyek ini adalah implementasi protokol **IEC 60870-5-104** menggunakan **Arduino UNO** untuk keperluan komunikasi SCADA, khususnya sebagai **slave/server**.
 
-Versi ini adalah pengembangan dari `v1.4.3` dengan tambahan dan penyempurnaan:
+Versi ini adalah pengembangan dari `v1.4.4` dengan tambahan dan penyempurnaan:
+- ⏱️ Penambahan fungsi watcdog untuk restart mikro kalau tidak menerima frame TEST ACT > 5 menit
 - 🔁 Sinkronisasi waktu dari SCADA (TI 103) ke RTC DS3231
 - ⏱️ Perbaikan parsing CP56Time2a dan offset memcpy
 - 🛡️ Validasi frame sinkronisasi waktu dan IOA
