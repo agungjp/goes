@@ -1,16 +1,13 @@
-# 📡 IEC 60870-5-104 Arduino Slave – v1.4.5
+# 📡 IEC 60870-5-104 Arduino Slave – v1.4.7
 
 Proyek ini adalah implementasi protokol **IEC 60870-5-104** menggunakan **Arduino UNO** untuk keperluan komunikasi SCADA, khususnya sebagai **slave/server**.
 
-Versi ini adalah pengembangan dari `v1.4.4` dengan tambahan dan penyempurnaan:
-- ⏱️ Penambahan fungsi watcdog untuk restart mikro kalau tidak menerima frame TEST ACT > 5 menit
-- 🔁 Sinkronisasi waktu dari SCADA (TI 103) ke RTC DS3231
-- ⏱️ Perbaikan parsing CP56Time2a dan offset memcpy
-- 🛡️ Validasi frame sinkronisasi waktu dan IOA
-- 🧠 Perbaikan COS agar hanya kirim jika status DI berubah
-- 📶 Penanganan reconnect TCP dan kirim ulang status
-- 🔧 Tambahan komentar, dokumentasi, dan modularisasi kode
-- 🧪 Logging debug untuk frame, waktu, dan NS/NR
+## 📑 CHANGELOG RINGKAS
+
+	•	✅ handle hang
+	•	✅ penambahan watchdog
+	•	✅ opsi debug serial print
+
 
 ---
 
@@ -132,14 +129,3 @@ Versi ini adalah pengembangan dari `v1.4.4` dengan tambahan dan penyempurnaan:
 ← STARTDT_ACT → Kirim STARTDT_CON
    ↓
 → Kirim ulang status (TI 30, 31)
-
-
- ## 9. 📑 CHANGELOG RINGKAS – v1.4.4
-
-	•	✅ Penambahan fungsi sinkronisasi waktu (TI 103)
-	•	✅ Perbaikan parsing CP56Time2a dan penempatan memcpy(&ack[9], ...)
-	•	✅ COS hanya kirim saat ada perubahan
-	•	✅ Proteksi IOA dan validasi DO TI 46
-	•	✅ Sinkronisasi NS/NR dari frame master
-	•	✅ Penanganan reconnect TCP dan pengiriman ulang status
-	•	✅ Dokumentasi & log diperjelas
