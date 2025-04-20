@@ -1,5 +1,5 @@
 /*=============================================================================|
-|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.4.4  |
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.4.8  |
 |==============================================================================|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
@@ -17,7 +17,7 @@
 
 #ifndef IEC104SLAVE_H
 #define IEC104SLAVE_H
-#define DEBUG
+// #define DEBUG
 // #define SET_MANUAL_RTC
 
 #include <Arduino.h>
@@ -52,6 +52,7 @@ private:
   void updateSerial();
   void handleModemText(String text);
   void restartModem();
+  bool readByteTimeout(Stream& s, uint8_t& out, unsigned long timeout = 200);
 
   DS3231 rtc = DS3231(SDA, SCL);
   Stream* modem = nullptr;

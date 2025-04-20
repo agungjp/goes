@@ -1,5 +1,5 @@
 /*=============================================================================|
-|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.4.4  |
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.4.8  |
 |==============================================================================|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
@@ -28,17 +28,24 @@ unsigned long lastTestAct = 0;
 void setup() {
   Serial.begin(115200); //debug
   modem.begin(9600);
-  Serial.println(F("GOES - IEC 60870-5-104 Slave v1.4.5"));
+  #ifdef DEBUG
+  Serial.println(F("GOES - IEC 60870-5-104 Slave v1.4.8"));
+  #endif
   slave.begin();
+  wdt_enable(WDTO_8S);
   lastTestAct = millis();
 }
 
 void loop() {
+  digitalWrite(LED_BUILTIN, millis() % 1000 < 100);
   slave.run();  // renamed from loop()
   // Kalau sudah lebih dari 5 menit tanpa TESTFR_ACT → hardware reset
   if (millis() - lastTestAct > TEST_ACT_TIMEOUT) {
+    #ifdef DEBUG
     Serial.println(F("⚠️  Tidak ada TESTFR_ACT >5 menit → hardware reset..."));
+    #endif
     wdt_enable(WDTO_15MS);   // WDT timeout ~15 ms
     while (1) { }            // tunggu WDT memicu reset
   }
+  wdt_reset();
 }

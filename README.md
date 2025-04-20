@@ -1,4 +1,4 @@
-# 📡 IEC 60870-5-104 Arduino Slave – v1.4.5
+# 📡 IEC 60870-5-104 Arduino Slave – v1.4.8
 
 Proyek ini adalah implementasi protokol **IEC 60870-5-104** menggunakan **Arduino UNO** untuk keperluan komunikasi SCADA, khususnya sebagai **slave/server**.
 
