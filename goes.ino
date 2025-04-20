@@ -22,7 +22,7 @@
 SoftwareSerial modem(10, 8);           // TX=10 → RX_modem, RX=8 ← TX_modem
 IEC104Slave slave(&modem);             // Konstruktor pakai Stream*
 
-const unsigned long TEST_ACT_TIMEOUT = 300000UL; // Waktu maksimal tanpa TESTFR_ACT = 5 menit
+const unsigned long TEST_ACT_TIMEOUT = 180000UL; // Waktu maksimal tanpa TESTFR_ACT = 3 (3*60*1000) menit
 unsigned long lastTestAct = 0;
 
 void setup() {
@@ -30,15 +30,18 @@ void setup() {
   modem.begin(9600);
   Serial.println(F("GOES - IEC 60870-5-104 Slave v1.4.5"));
   slave.begin();
+  wdt_enable(WDTO_8S);
   lastTestAct = millis();
 }
 
 void loop() {
+  digitalWrite(LED_BUILTIN, millis() % 1000 < 100);
   slave.run();  // renamed from loop()
   // Kalau sudah lebih dari 5 menit tanpa TESTFR_ACT → hardware reset
   if (millis() - lastTestAct > TEST_ACT_TIMEOUT) {
-    Serial.println(F("⚠️  Tidak ada TESTFR_ACT >5 menit → hardware reset..."));
+    Serial.println(F("⚠️  Tidak ada TESTFR_ACT > 3 menit → hardware reset..."));
     wdt_enable(WDTO_15MS);   // WDT timeout ~15 ms
     while (1) { delay(50);}            // tunggu WDT memicu reset
   }
+  wdt_reset();
 }

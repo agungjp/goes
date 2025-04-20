@@ -50,8 +50,9 @@ private:
   void convertCP56Time2a(uint8_t* buffer);
   void triggerRelay(byte command);
   void updateSerial();
-  void handleModemText(String text);
+  void handleModemText(const char* text);
   void restartModem();
+  bool readByteTimeout(Stream& s, uint8_t& out, unsigned long timeout = 200);
 
   DS3231 rtc = DS3231(SDA, SCL);
   Stream* modem = nullptr;
@@ -71,7 +72,7 @@ private:
   const int PIN_CLOSE = 7;
   const int MODEM_POWER_PIN = 9;
 
-  static const int MAX_BUFFER = 64;
+  static const int MAX_BUFFER = 64; 
 };
 
 #endif

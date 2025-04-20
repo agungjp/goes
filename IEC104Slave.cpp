@@ -17,6 +17,7 @@
 
 #include "IEC104Slave.h"
 #include <string.h>
+#include <ctype.h>  // untuk toupper()
 extern unsigned long lastTestAct;
 
 IEC104Slave::IEC104Slave(Stream* serial) {
@@ -48,18 +49,23 @@ void IEC104Slave::setupPins() {
   pinMode(MODEM_POWER_PIN, OUTPUT);
   pinMode(PIN_OPEN, OUTPUT);
   pinMode(PIN_CLOSE, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(PIN_OPEN, LOW);
   digitalWrite(PIN_CLOSE, LOW);
   digitalWrite(MODEM_POWER_PIN, LOW);
 }
 
 void IEC104Slave::restartModem() {
-  Serial.println("🔁 Restarting modem via D9...");
+#ifdef DEBUG
+  Serial.println(F("🔁 Restarting modem via D9..."));
+#endif
   digitalWrite(MODEM_POWER_PIN, HIGH);
   delay(500);
   digitalWrite(MODEM_POWER_PIN, LOW);
   delay(500);
-  Serial.println("✅ Restart done.");
+#ifdef DEBUG
+  Serial.println(F("✅ Restart done."));
+#endif
 }
 
 void IEC104Slave::setupConnection() {
@@ -75,8 +81,10 @@ void IEC104Slave::setupConnection() {
 
 void IEC104Slave::updateSerial() {
   delay(2000);
+#ifdef DEBUG
   while (modem->available()) Serial.write(modem->read());
   while (Serial.available()) modem->write(Serial.read());
+#endif
 }
 
 void IEC104Slave::updateInputs() {
@@ -105,17 +113,23 @@ void IEC104Slave::run() {
 void IEC104Slave::checkCOS() {
   // Serial.println("[DEBUG] Memeriksa COS...");
   if (remote != prevRemote) {
-    Serial.print("[DEBUG] Remote berubah: "); Serial.print(prevRemote); Serial.print(" → "); Serial.println(remote);
+#ifdef DEBUG
+    Serial.print(F("[DEBUG] Remote berubah: ")); Serial.print(prevRemote); Serial.print(" → "); Serial.println(remote);
+#endif
     sendTimestamped(30, 1001, remote ? 0 : 1);
     prevRemote = remote;
   }
   if (gfd != prevGFD) {
-    Serial.print("[DEBUG] GFD berubah: "); Serial.print(prevGFD); Serial.print(" → "); Serial.println(gfd);
+#ifdef DEBUG
+    Serial.print(F("[DEBUG] GFD berubah: ")); Serial.print(prevGFD); Serial.print(" → "); Serial.println(gfd);
+#endif
     sendTimestamped(30, 1002, gfd ? 1 : 0);
     prevGFD = gfd;
   }
   if (cb != prevCB) {
-    Serial.print("[DEBUG] CB berubah: "); Serial.print(prevCB); Serial.print(" → "); Serial.println(cb);
+#ifdef DEBUG
+    Serial.print(F("[DEBUG] CB berubah: ")); Serial.print(prevCB); Serial.print(" → "); Serial.println(cb);
+#endif
     sendTimestamped(31, 11000, cb);
     prevCB = cb;
   }
@@ -132,93 +146,124 @@ void IEC104Slave::checkCOS() {
 
 void IEC104Slave::listen() {
   static byte buf[MAX_BUFFER];
-  static String modemText = "";
   int len = 0;
+  static char textBuf[64];
+  static uint8_t textLen = 0;
 
   while (modem->available()) {
     char c = modem->read();
 
-    // Teks dari modem
+    // === parsing teks status modem ===
     if (c == '\n' || c == '\r') {
-      if (modemText.length() > 0) {
-        modemText.trim();
-        handleModemText(modemText);
-        modemText = "";
+      if (textLen > 0) {
+        textBuf[textLen] = '\0';
+        handleModemText(textBuf);
+        textLen = 0;
       }
-    } else if ((byte)c != 0x68) {
-      modemText += c;
+      continue;
+    }
+    if ((uint8_t)c != 0x68) {
+      // masih teks, simpan
+      if (textLen < sizeof(textBuf)-1) textBuf[textLen++] = c;
       continue;
     }
 
-    // Frame IEC 104 diawali 0x68
-    if ((byte)c == 0x68) {
-      buf[0] = 0x68;
-      while (modem->available() < 1);  // tunggu 1 byte
-      byte length = modem->read();
-      buf[1] = length;
+    // === parsing frame IEC 60870-5-104 dimulai 0x68 ===
+    buf[0] = 0x68;
+    uint8_t length;
+    // baca byte length dengan timeout
+    if (!readByteTimeout(*modem, length, 200)) return;
+    buf[1] = length;
 
-      for (int i = 0; i < length; i++) {
-        while (!modem->available());
-        buf[2 + i] = modem->read();
-      }
+    // overflow guard
+    if (length > MAX_BUFFER - 2) return;
 
-      len = length + 2;
+    // baca payload satu per satu dengan timeout
+    for (int i = 0; i < length; ++i) {
+      uint8_t b;
+      if (!readByteTimeout(*modem, b, 200)) return;
+      buf[2 + i] = b;
+    }
+    len = length + 2;
 
-      // Tampilkan frame
-      // Serial.print("Master : NS ("); Serial.print(ns);
-      // Serial.print(") NR("); Serial.print(nr); Serial.print(").    → ");
-      // for (int i = 0; i < len; i++) {
-      //   if (buf[i] < 0x10) Serial.print("0");
-      //   Serial.print(buf[i], HEX); Serial.print(" ");
-      // }
-      // Serial.println();
-      if ((buf[2] & 0x01) == 0) {
-        handleIFrame(buf, len);
-      }
-      else if (buf[2] == 0x01) {
-        handleSFrame(buf, len);
-      }
-      else if (buf[1] == 0x04) {
-        handleUFrame(buf, len);
-      }
+    // route frame berdasarkan Control Field
+    if ((buf[2] & 0x01) == 0) {
+      handleIFrame(buf, len);
+    }
+    else if ((buf[2] & 0x03) == 1) {
+      handleSFrame(buf, len);
+    }
+    else if (buf[1] == 0x04) {
+      handleUFrame(buf, len);
     }
   }
 }
 
-void IEC104Slave::handleModemText(String text) {
-  text.toUpperCase();
-  if (text.indexOf("CLOSED") >= 0) {
-    connectionState = 1;
-    Serial.println("⚠️ Koneksi CLOSED. Siap reconnect...");
-  } else if ((text.indexOf("REMOTE IP") >= 0 || text.indexOf("CONNECT") >= 0) && connectionState == 1) {
-    connectionState = 2;
-    Serial.println("🔌 CONNECT terdeteksi. Menunggu STARTDT_ACT...");
+bool IEC104Slave::readByteTimeout(Stream& s, uint8_t& out, unsigned long timeout) {
+  unsigned long start = millis();
+  while (!s.available()) {
+    if (millis() - start >= timeout) return false;
   }
-  Serial.println("📡 MODEM: " + text);
-  text.toUpperCase();
+  out = s.read();
+  return true;
+}
 
-  if (text.indexOf("CLOSED") >= 0) {
-    connectionState = 0;
-    Serial.println("⚠️  Koneksi terputus.");
+void IEC104Slave::handleModemText(const char* text) {
+  // Abaikan jika text kosong
+  if (text[0] == '\0') return;
+
+  // Debug: tampilkan apa yang diterima modem
+  Serial.print("Modem -> ");
+  Serial.println(text);
+
+  // Buat salinan uppercase untuk pencarian case‑insensitive
+  char upper[64];
+  size_t len = strlen(text);
+  if (len >= sizeof(upper)) len = sizeof(upper) - 1;
+  for (size_t i = 0; i < len; ++i) {
+    upper[i] = toupper((unsigned char)text[i]);
   }
-  else if (text.indexOf("REMOTE IP") >= 0 || text.indexOf("CONNECT") >= 0) {
+  upper[len] = '\0';
+
+  // 1) Deteksi CLOSED
+  if (strstr(upper, "CLOSED") != nullptr) {
     connectionState = 1;
-    Serial.println("🔄 Modem CONNECTED. Menunggu STARTDT_ACT...");
+    Serial.println("Koneksi CLOSED. Siap reconnect...");
+    return;
   }
-} 
+
+  // 2) Deteksi REMOTE IP: di awal baris
+  if (strncmp(upper, "REMOTE IP:", 10) == 0) {
+    // Ambil IP original dari text[]
+    const char* ip = text + 10;
+    while (*ip == ' ') ++ip;
+    Serial.print("Remote IP terdeteksi: ");
+    Serial.println(ip);
+    return;
+  }
+
+  // 3) Deteksi CONNECT (setelah CLOSED)
+  if (strstr(upper, "CONNECT") != nullptr && connectionState == 1) {
+    connectionState = 2;
+    Serial.println("CONNECT terdeteksi. Menunggu STARTDT_ACT...");
+    return;
+  }
+}
 
 void IEC104Slave::handleIFrame(const byte* buf, byte len) {
   // Ambil NS dan NR dari frame yang diterima
   ns = (buf[3] << 7) | (buf[2] >> 1);
   nr = (buf[5] << 7) | (buf[4] >> 1);
 
-  Serial.print("Master : NS ("); Serial.print(ns);
-  Serial.print(") NR("); Serial.print(nr); Serial.print(").    → ");
+#ifdef DEBUG
+  Serial.print(F("Master (I-Format): NS (")); Serial.print(ns);
+  Serial.print(F(") NR(")); Serial.print(nr); Serial.print(").    → ");
   for (int i = 0; i < len; i++) {
-    if (buf[i] < 0x10) Serial.print("0");
-    Serial.print(buf[i], HEX); Serial.print(" ");
+    if (buf[i] < 0x10) Serial.print(F("0"));
+    Serial.print(buf[i], HEX); Serial.print(F(" "));
   }
   Serial.println();
+#endif
 
   // Perbarui rxSeq untuk acknowledgment berikutnya
   rxSeq = ns + 1;
@@ -227,7 +272,7 @@ void IEC104Slave::handleIFrame(const byte* buf, byte len) {
   txSeq = nr;
 
   // Proses sesuai Type Identification (TI)
-  byte ti = buf[6];
+  static byte ti = buf[6];
   switch (ti) {
     case 100: handleGI(buf, len); break;
     case 103: handleRTC(buf, len); break;  // <--- Ini untuk TI 103
@@ -239,24 +284,28 @@ void IEC104Slave::handleIFrame(const byte* buf, byte len) {
 void IEC104Slave::handleSFrame(const byte* buf, byte len) {
   nr = (buf[5] << 7) | (buf[4] >> 1);
   // Tampilkan frame
-  Serial.print("Master (S-Format): NS ("); Serial.print(ns);
-  Serial.print(") NR("); Serial.print(nr); Serial.print(").    → ");
+#ifdef DEBUG
+  Serial.print(F("Master (S-Format): NS (")); Serial.print(ns);
+  Serial.print(F(") NR(")); Serial.print(nr); Serial.print(F(").    → "));
   for (int i = 0; i < len; i++) {
-    if (buf[i] < 0x10) Serial.print("0");
-    Serial.print(buf[i], HEX); Serial.print(" ");
+    if (buf[i] < 0x10) Serial.print(F("0"));
+    Serial.print(buf[i], HEX); Serial.print(F(" "));
   }
   Serial.println();
+#endif
   txSeq = nr;
 }
 
 void IEC104Slave::handleUFrame(const byte* buf, byte len) {
   // Tampilkan frame
-  Serial.print("Master (U-Format):.    → ");
+#ifdef DEBUG
+  Serial.print(F("Master (U-Format):.    → "));
   for (int i = 0; i < len; i++) {
-    if (buf[i] < 0x10) Serial.print("0");
-    Serial.print(buf[i], HEX); Serial.print(" ");
+    if (buf[i] < 0x10) Serial.print(F("0"));
+    Serial.print(buf[i], HEX); Serial.print(F(" "));
   }
   Serial.println();
+#endif
   if (buf[2] == 0x07){
     sendUFormat(0x0B);
   }
@@ -267,21 +316,21 @@ void IEC104Slave::handleUFrame(const byte* buf, byte len) {
 }
 
 void IEC104Slave::handleGI(const byte* buf, byte len) {
-  byte ca_lo = buf[10];
-  byte ca_hi = buf[11];
+  static byte ca_lo = buf[10];
+  static byte ca_hi = buf[11];
   updateInputs();
 
-  byte actCon[] = {0x64, 0x01, 0x07, 0x00, ca_lo, ca_hi, 0x00, 0x00, 0x00, 0x14};
+  static byte actCon[] = {0x64, 0x01, 0x07, 0x00, ca_lo, ca_hi, 0x00, 0x00, 0x00, 0x14};
   sendIFrame(actCon, sizeof(actCon)); delay(50);
 
-  byte ti1[] = {
+  static byte ti1[] = {
     0x01, 0x02, 0x14, 0x00, ca_lo, ca_hi,
     0xE9, 0x03, 0x00, remote ? 0 : 1,
     0xEA, 0x03, 0x00, gfd ? 1 : 0
   };
   sendIFrame(ti1, sizeof(ti1)); delay(50);
 
-  byte ti3[] = {
+  static byte ti3[] = {
     0x03, 0x01, 0x14, 0x00, ca_lo, ca_hi,
     0xF8, 0x2A, 0x00, cb
   };
@@ -292,28 +341,32 @@ void IEC104Slave::handleGI(const byte* buf, byte len) {
 }
 
 void IEC104Slave::handleTI46(const byte* d, byte len) {
-
-  // ✅ Perbaikan: IOA pakai 3 byte (little-endian)
   uint32_t ioa = d[6] | (d[7] << 8) | (d[8] << 16);
-  byte sco = d[9] & 0x03;
-
-  Serial.print("[TI46] IOA: ");
+  static byte sco = d[9] & 0x03;
+#ifdef DEBUG
+  Serial.print(F("[TI46] IOA: "));
   Serial.print(ioa);
-  Serial.print(" | SCO: ");
+  Serial.print(F(" | SCO: "));
   Serial.println(sco);
-
+#endif
   if (!remote) {
-    Serial.println("[REJECT] Mode LOCAL");
+#ifdef DEBUG
+    Serial.println(F("[REJECT] Mode LOCAL"));
+#endif
   } else if ((sco == 1 && cb == 1) || (sco == 2 && cb == 2)) {
-    Serial.println("[REJECT] Status CB sudah sesuai");
+#ifdef DEBUG
+    Serial.println(F("[REJECT] Status CB sudah sesuai"));
+#endif
   } else if (sco == 1 || sco == 2) {
     triggerRelay(sco);
   } else {
-    Serial.println("[REJECT] SCO tidak valid");
+#ifdef DEBUG
+    Serial.println(F("[REJECT] SCO tidak valid"));
+#endif
   }
 
   // ✅ Kirim ACK (COT = 7)
-  byte ack[] = {
+  static byte ack[] = {
     0x2E, 0x01, 0x07, 0x00, 0x01, 0x00,
     (byte)(ioa & 0xFF), (byte)((ioa >> 8) & 0xFF), (byte)((ioa >> 16) & 0xFF),
     sco
@@ -321,7 +374,7 @@ void IEC104Slave::handleTI46(const byte* d, byte len) {
   sendIFrame(ack, sizeof(ack)); delay(50);
 
   // ✅ Kirim Termination (COT = 10)
-  byte term[] = {
+  static byte term[] = {
     0x2E, 0x01, 0x0A, 0x00, 0x01, 0x00,
     (byte)(ioa & 0xFF), (byte)((ioa >> 8) & 0xFF), (byte)((ioa >> 16) & 0xFF),
     sco
@@ -332,17 +385,10 @@ void IEC104Slave::handleTI46(const byte* d, byte len) {
 void IEC104Slave::handleRTC(const byte* buf, byte len) {
   const byte* time = &buf[15];
 
-  // Serial.print("🔍 Data CP56Time2a: ");
-  // for (int i = 0; i < 7; i++) {
-  //   if (time[i] < 0x10) Serial.print("0");
-  //   Serial.print(time[i], HEX); Serial.print(" ");
-  // }
-  // Serial.println();
-
   setRTCFromCP56(time);
 
   // Kirim balasan ACK – TI 103, COT = 7
-  byte ack[16] = {
+  static byte ack[16] = {
     0x67, 0x01,       // TI = 103, VSQ = 1
     0x07, 0x00,       // COT = 7
     0x01, 0x00,       // CA = 1
@@ -355,27 +401,27 @@ void IEC104Slave::handleRTC(const byte* buf, byte len) {
 
 void IEC104Slave::setRTCFromCP56(const byte* time) {
   uint16_t ms     = time[0] | (time[1] << 8);     // byte 0-1: millisecond
-  byte minute     = time[2] & 0x3F;               // byte 2: 0-5 bit minute
-  byte hour       = time[3] & 0x1F;               // byte 3: 0-4 bit hour
-  byte date       = time[4] & 0x1F;               // byte 4: 0-4 bit date
-  byte dow        = (time[4] >> 5) & 0x07;        // byte 4: 5-7 bit day of week
-  byte month      = time[5] & 0x0F;               // byte 5: 0-3 bit month
+  static byte minute     = time[2] & 0x3F;               // byte 2: 0-5 bit minute
+  static byte hour       = time[3] & 0x1F;               // byte 3: 0-4 bit hour
+  static byte date       = time[4] & 0x1F;               // byte 4: 0-4 bit date
+  static byte dow        = (time[4] >> 5) & 0x07;        // byte 4: 5-7 bit day of week
+  static byte month      = time[5] & 0x0F;               // byte 5: 0-3 bit month
   uint16_t year       = 2000 + (time[6] & 0x7F);      // byte 6: 0-6 bit year
-
-  Serial.print("🕒 RTC diatur ke: ");
-  Serial.print(year); Serial.print("-");
-  if (month < 10) Serial.print("0");
-  Serial.print(month); Serial.print("-");
-  if (date < 10) Serial.print("0");
-  Serial.print(date); Serial.print(" ");
-  if (hour < 10) Serial.print("0");
-  Serial.print(hour); Serial.print(":");
-  if (minute < 10) Serial.print("0");
-  Serial.print(minute); Serial.print(":");
-  if ((ms / 1000) < 10) Serial.print("0");
+#ifdef DEBUG
+  Serial.print(F("🕒 RTC diatur ke: "));
+  Serial.print(year); Serial.print(F("-"));
+  if (month < 10) Serial.print(F("0"));
+  Serial.print(month); Serial.print(F("-"));
+  if (date < 10) Serial.print(F("0"));
+  Serial.print(date); Serial.print(F(" "));
+  if (hour < 10) Serial.print(F("0"));
+  Serial.print(hour); Serial.print(F(":"));
+  if (minute < 10) Serial.print(F("0"));
+  Serial.print(minute); Serial.print(F(":"));
+  if ((ms / 1000) < 10) Serial.print(F("0"));
   Serial.print(ms / 1000);
-  Serial.print(" (DOW: "); Serial.print(dow); Serial.println(")");
-
+  Serial.print(" (DOW: "); Serial.print(dow); Serial.println(F(")"));
+#endif
   rtc.setDOW(dow);
   rtc.setDate(date, month, year);
   rtc.setTime(hour, minute, ms / 1000);
@@ -424,10 +470,10 @@ void IEC104Slave::sendIFrame(const byte* payload, byte len) {
   memcpy(&frame[6], payload, len);
   modem->write(frame, 6 + len);
 #ifdef DEBUG
-  Serial.print("Slave : NS ("); Serial.print(txSeq); Serial.print(") NR("); Serial.print(rxSeq); Serial.print(").    ← ");
+  Serial.print(F("Slave (I-Format): NS (")); Serial.print(txSeq); Serial.print(F(") NR(")); Serial.print(rxSeq); Serial.print(F(").    ← "));
   for (int i = 0; i < 6 + len; i++) {
-    if (frame[i] < 0x10) Serial.print("0");
-    Serial.print(frame[i], HEX); Serial.print(" ");
+    if (frame[i] < 0x10) Serial.print(F("0"));
+    Serial.print(frame[i], HEX); Serial.print(F(" "));
   }
   Serial.println();
 #endif
@@ -436,13 +482,15 @@ void IEC104Slave::sendIFrame(const byte* payload, byte len) {
 }
 
 void IEC104Slave::sendUFormat(byte controlByte) {
-  byte r[6] = {0x68, 0x04, controlByte, 0x00, 0x00, 0x00};
+  static byte r[6] = {0x68, 0x04, controlByte, 0x00, 0x00, 0x00};
   modem->write(r, 6);
-  Serial.print("Slave (U-Format).    ← ");
+#ifdef DEBUG
+  Serial.print(F("Slave (U-Format).    ← "));
   for (int i = 0; i < 6; i++) {
-    if (r[i] < 0x10) Serial.print("0");
-    Serial.print(r[i], HEX); Serial.print(" ");
+    if (r[i] < 0x10) Serial.print(F("0"));
+    Serial.print(r[i], HEX); Serial.print(F(" "));
   }
   Serial.println();
+#endif
   delay(50);
 }
