@@ -73,11 +73,15 @@ void IEC104Slave::setupConnection() {
   modem->println("AT"); updateSerial(); delay(5000);
   modem->println("AT+CGATT=1"); updateSerial();
   modem->println("AT+CIPMODE=1"); updateSerial();
-  modem->println("AT+CSTT=\"m2mplnapd\""); updateSerial();
+  modem->println("AT+CSTT=\"apdsumbarm2m\""); updateSerial();
   modem->println("AT+CIICR"); updateSerial();
   modem->println("AT+CIFSR"); updateSerial();
   modem->println("AT+CIPSERVER=1,2404"); updateSerial();
 }
+
+// jabar = m2mplnapd
+// kskt = M2MAPDKSKT
+// sumbar = apdsumbarm2m / apdsumbarm2m.xl
 
 void IEC104Slave::updateSerial() {
   delay(2000);

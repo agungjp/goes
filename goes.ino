@@ -32,7 +32,7 @@ void setup() {
   Serial.println(F("GOES - IEC 60870-5-104 Slave v1.4.8"));
   #endif
   slave.begin();
-  wdt_enable(WDTO_8S);
+  wdt_enable(WDTO_8S);  
   lastTestAct = millis();
 }
 

@@ -128,3 +128,100 @@ Proyek ini adalah implementasi protokol **IEC 60870-5-104** menggunakan **Arduin
 ← STARTDT_ACT → Kirim STARTDT_CON
    ↓
 → Kirim ulang status (TI 30, 31)
+
+---
+
+## Dokumentasi Flow & Finite State Machine GOES v2.0
+
+Berikut dokumentasi alur eksekusi (flow) dan FSM (Finite State Machine) untuk project **GOES (Gardu Online Surveillance)** versi selanjutnya.
+
+---
+
+### 1. Overview Flow
+
+1. **Boot & Inisialisasi**
+
+   * Arduino start → `goes.ino` memanggil `IEC104Slave.begin()`
+   * `begin()`:
+
+     * Mulai RTC (DS3231)
+     * Setup pin I/O
+     * Reset & restart modem
+     * Setup koneksi IEC 104 via AT commands
+     * Inisialisasi awal variabel & state
+
+2. **Loop Utama (`run()`)**
+
+   * **Update Inputs**: baca status `Remote`, `GFD`, `CB`
+   * **Check COS**: deteksi perubahan status DI → kirim frame TI 30/31
+   * **Listen**: baca frame dari modem:
+
+     * Teks AT response → `handleModemText()`
+     * Frame IEC 104 → `handleIFrame()`, `handleSFrame()`, `handleUFrame()`
+   * **Check COS (lagi)**: untuk cover edge-case setelah listen
+   * **Heartbeat & LED**: tangani LED status, watchdog reset
+
+3. **Error Handling & Recovery**
+
+   * **Watchdog Timer**: reset board jika hang
+   * **Timeout koneksi**: auto reconnect jika tidak ada activity selama X detik
+   * **Modem CLOSED**: deteksi di `handleModemText()` → pindah ke state reconnect
+
+---
+
+### 2. FSM (Finite State Machine)
+
+State machine berikut menggambarkan berbagai kondisi koneksi & operasi GOES:
+
+```mermaid
+stateDiagram-v2
+    [*] --> INIT
+    INIT --> SETUP_PINS : IEC104Slave.begin()
+    SETUP_PINS --> RESTART_MODEM : setupPins()
+    RESTART_MODEM --> REQUEST_CONNECTION : restartModem()
+
+    REQUEST_CONNECTION --> WAIT_MODEM_READY : send AT...AT+CIPSERVER
+    WAIT_MODEM_READY --> WAIT_STARTDT : handleModemText(CONNECT)
+    WAIT_STARTDT --> CONNECTED : handleUFrame(STARTDT_ACT)
+
+    CONNECTED --> PROCESS_LOOP : run()
+    PROCESS_LOOP --> CONNECTED : normal loop
+
+    CONNECTED --> ERROR : handleModemText(CLOSED)
+    ERROR --> RECONNECT : < timeout or CLOSED >
+    RECONNECT --> REQUEST_CONNECTION : retry connect
+
+    state PROCESS_LOOP {
+      [*] --> UPDATE_INPUTS
+      UPDATE_INPUTS --> CHECK_COS
+      CHECK_COS --> LISTEN
+      LISTEN --> HEARTBEAT
+      HEARTBEAT --> UPDATE_INPUTS
+      HEARTBEAT --> ERROR : modem error
+    }
+
+    %% Watchdog catch-all transition
+    [*] --> RESTART_MODEM : Watchdog timeout
+```
+
+**Penjelasan State:**
+
+* **INIT**: Inisialisasi variabel & objek
+* **SETUP\_PINS**: Konfigurasi pin digital
+* **RESTART\_MODEM**: Power-cycle modem
+* **REQUEST\_CONNECTION**: Kirim AT commands untuk setup TCP server
+* **WAIT\_MODEM\_READY**: Tunggu "CONNECT" dari modem
+* **WAIT\_STARTDT**: Tunggu perintah STARTDT\_ACT dari SCADA Master
+* **CONNECTED**: Siap operasikan IEC 104 (masuk loop utama)
+* **PROCESS\_LOOP**: Sub-state machine di dalam loop
+* **ERROR**: Terjadi error koneksi / hang
+* **RECONNECT**: Coba ulang proses koneksi
+
+---
+
+### 3. Catatan Implementasi
+
+* **Watchdog**: panggil `wdt_enable(WDTO_8S)` di `INIT`
+* **Timeout koneksi**: gunakan `millis()` untuk deteksi inactivity
+* **LED Indikator**: tampilkan state `CONNECTED` vs `ERROR`
+* **Modularisasi**: pisahkan tiap state handling ke metode sendiri
