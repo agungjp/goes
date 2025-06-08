@@ -1,5 +1,5 @@
 /*=============================================================================|
-|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.5.0  |
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave - FCO                    v1.0  |
 |==============================================================================|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
@@ -36,23 +36,23 @@ void IEC104Slave::begin() {
   setupConnection();
 
   updateInputs();
-  prevRemote = remote;
-  prevGFD = gfd;
-  prevCB = cb;
+  prevDI1 = DI1;
+  prevDI2 = DI2;
+  prevDI3 = DI3;
 }
 
 void IEC104Slave::setupPins() {
-  pinMode(PIN_REMOTE, INPUT_PULLUP);
-  pinMode(PIN_GFD, INPUT_PULLUP);
-  pinMode(PIN_CB1, INPUT_PULLUP);
-  pinMode(PIN_CB2, INPUT_PULLUP);
+  pinMode(PIN_DI_1, INPUT_PULLUP);
+  pinMode(PIN_DI_2, INPUT_PULLUP);
+  pinMode(PIN_DI_3, INPUT_PULLUP);
+  pinMode(PIN_DI_4, INPUT_PULLUP);
   pinMode(MODEM_POWER_PIN, OUTPUT);
-  pinMode(PIN_OPEN, OUTPUT);
-  pinMode(PIN_CLOSE, OUTPUT);
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(PIN_OPEN, LOW);
-  digitalWrite(PIN_CLOSE, LOW);
   digitalWrite(MODEM_POWER_PIN, LOW);
+  // pinMode(PIN_OPEN, OUTPUT);
+  // pinMode(PIN_CLOSE, OUTPUT);
+  // digitalWrite(PIN_OPEN, LOW);
+  // digitalWrite(PIN_CLOSE, LOW);
+  pinMode(LED_BUILTIN, OUTPUT);
 }
 
 void IEC104Slave::restartModem() {
@@ -73,7 +73,7 @@ void IEC104Slave::setupConnection() {
   modem->println("AT"); updateSerial(); delay(5000);
   modem->println("AT+CGATT=1"); updateSerial();
   modem->println("AT+CIPMODE=1"); updateSerial();
-  modem->println("AT+CSTT=\"m2mplnapd\""); updateSerial();
+  modem->println("AT+CSTT=\"M2MAPDKSKT\""); updateSerial();
   modem->println("AT+CIICR"); updateSerial();
   modem->println("AT+CIFSR"); updateSerial();
   modem->println("AT+CIPSERVER=1,2404"); updateSerial();
@@ -93,19 +93,15 @@ void IEC104Slave::updateSerial() {
 }
 
 void IEC104Slave::updateInputs() {
-  prevRemote = remote;
-  prevGFD = gfd;
-  prevCB = cb;
+  prevDI1 = DI1;
+  prevDI2 = DI2;
+  prevDI3 = DI3;
+  // prevDI4 = DI4;
 
-  remote = digitalRead(PIN_REMOTE) == LOW; // HIGH = Local; LOW = Remote
-  gfd = digitalRead(PIN_GFD);
-
-  bool cb1 = digitalRead(PIN_CB1);
-  bool cb2 = digitalRead(PIN_CB2);
-  if (!cb1 && !cb2) cb = 0;
-  else if (cb1 && !cb2) cb = 1;
-  else if (!cb1 && cb2) cb = 2;
-  else cb = 3;
+  DI1 = digitalRead(PIN_DI_1);
+  DI2 = digitalRead(PIN_DI_2);
+  DI3 = digitalRead(PIN_DI_3);
+  // DI4 = digitalRead(PIN_DI_4);
 }
 
 void IEC104Slave::run() {
@@ -116,37 +112,30 @@ void IEC104Slave::run() {
 }
 
 void IEC104Slave::checkCOS() {
-  // Serial.println("[DEBUG] Memeriksa COS...");
-  if (remote != prevRemote) {
     #ifdef DEBUG
-    Serial.print("[DEBUG] Remote berubah: "); Serial.print(prevRemote); Serial.print(" → "); Serial.println(remote);
+    Serial.println("[DEBUG] Memeriksa COS...");
     #endif
-    sendTimestamped(30, 1001, remote ? 0 : 1);
-    prevRemote = remote;
-  }
-  if (gfd != prevGFD) {
-    #ifdef DEBUG
-    Serial.print("[DEBUG] GFD berubah: "); Serial.print(prevGFD); Serial.print(" → "); Serial.println(gfd);
-    #endif
-    sendTimestamped(30, 1002, gfd ? 1 : 0);
-    prevGFD = gfd;
-  }
-  if (cb != prevCB) {
-    #ifdef DEBUG
-    Serial.print("[DEBUG] CB berubah: "); Serial.print(prevCB); Serial.print(" → "); Serial.println(cb);
-    #endif
-    sendTimestamped(31, 11000, cb);
-    prevCB = cb;
-  }
-
-  if (gfd != prevGFD) {
-    sendTimestamped(30, 1002, gfd ? 1 : 0);
-    prevGFD = gfd;
-  }
-  if (cb != prevCB) {
-    sendTimestamped(31, 11000, cb);
-    prevCB = cb;
-  }
+    if (DI1 != prevDI1) {
+      #ifdef DEBUG
+      Serial.print("[DEBUG] DI 1 berubah: "); Serial.print(prevDI1); Serial.print(" → "); Serial.println(DI1);
+      #endif
+      sendTimestamped(30, 1001, DI1 ? 0 : 1);
+      prevDI1 = DI1;
+    }
+    if (DI2 != prevDI2) {
+      #ifdef DEBUG
+      Serial.print("[DEBUG] DI 2 berubah: "); Serial.print(prevDI2); Serial.print(" → "); Serial.println(DI2);
+      #endif
+      sendTimestamped(30, 1002, DI2 ? 0 : 1);
+      prevDI2 = DI2;
+    }
+    if (DI3 != prevDI3) {
+      #ifdef DEBUG
+      Serial.print("[DEBUG] DI 3 berubah: "); Serial.print(prevDI3); Serial.print(" → "); Serial.println(DI3);
+      #endif
+      sendTimestamped(30, 1003, DI3 ? 0 : 1);
+      prevDI3 = DI3;
+    }
 }
 
 void IEC104Slave::listen() {
@@ -264,7 +253,7 @@ void IEC104Slave::handleIFrame(const byte* buf, byte len) {
   switch (ti) {
     case 100: handleGI(buf, len); break;
     case 103: handleRTC(buf, len); break;  // <--- Ini untuk TI 103
-    case 46:  handleTI46(&buf[6], len - 6); break;
+    // case 46:  handleTI46(&buf[6], len - 6); break;
     default: break;
   }
 }
@@ -314,67 +303,62 @@ void IEC104Slave::handleGI(const byte* buf, byte len) {
   sendIFrame(actCon, sizeof(actCon)); delay(50);
 
   byte ti1[] = {
-    0x01, 0x02, 0x14, 0x00, ca_lo, ca_hi,
-    0xE9, 0x03, 0x00, remote ? 0 : 1,
-    0xEA, 0x03, 0x00, gfd ? 1 : 0
+    0x01, 0x03, 0x14, 0x00, ca_lo, ca_hi,
+    0xE9, 0x03, 0x00, DI1 ? 0 : 1,
+    0xEA, 0x03, 0x00, DI2 ? 1 : 0,
+    0xEB, 0x03, 0x00, DI3 ? 1 : 0
   };
   sendIFrame(ti1, sizeof(ti1)); delay(50);
-
-  byte ti3[] = {
-    0x03, 0x01, 0x14, 0x00, ca_lo, ca_hi,
-    0xF8, 0x2A, 0x00, cb
-  };
-  sendIFrame(ti3, sizeof(ti3)); delay(50);
 
   byte term[] = {0x64, 0x01, 0x0A, 0x00, ca_lo, ca_hi, 0x00, 0x00, 0x00, 0x14};
   sendIFrame(term, sizeof(term));
 }
 
-void IEC104Slave::handleTI46(const byte* d, byte len) {
+// void IEC104Slave::handleTI46(const byte* d, byte len) {
 
-  // ✅ Perbaikan: IOA pakai 3 byte (little-endian)
-  uint32_t ioa = d[6] | (d[7] << 8) | (d[8] << 16);
-  byte sco = d[9] & 0x03;
+//   // ✅ Perbaikan: IOA pakai 3 byte (little-endian)
+//   uint32_t ioa = d[6] | (d[7] << 8) | (d[8] << 16);
+//   byte sco = d[9] & 0x03;
 
-  #ifdef DEBUG
-  Serial.print("[TI46] IOA: ");
-  Serial.print(ioa);
-  Serial.print(" | SCO: ");
-  Serial.println(sco);
-  #endif
+//   #ifdef DEBUG
+//   Serial.print("[TI46] IOA: ");
+//   Serial.print(ioa);
+//   Serial.print(" | SCO: ");
+//   Serial.println(sco);
+//   #endif
 
-  if (!remote) {
-    #ifdef DEBUG
-    Serial.println("[REJECT] Mode LOCAL");
-    #endif
-  } else if ((sco == 1 && cb == 1) || (sco == 2 && cb == 2)) {
-    #ifdef DEBUG
-    Serial.println("[REJECT] Status CB sudah sesuai");
-    #endif
-  } else if (sco == 1 || sco == 2) {
-    triggerRelay(sco);
-  } else {
-    #ifdef DEBUG
-    Serial.println("[REJECT] SCO tidak valid");
-    #endif
-  }
+//   if (!remote) {
+//     #ifdef DEBUG
+//     Serial.println("[REJECT] Mode LOCAL");
+//     #endif
+//   } else if ((sco == 1 && cb == 1) || (sco == 2 && cb == 2)) {
+//     #ifdef DEBUG
+//     Serial.println("[REJECT] Status CB sudah sesuai");
+//     #endif
+//   } else if (sco == 1 || sco == 2) {
+//     triggerRelay(sco);
+//   } else {
+//     #ifdef DEBUG
+//     Serial.println("[REJECT] SCO tidak valid");
+//     #endif
+//   }
 
-  // ✅ Kirim ACK (COT = 7)
-  byte ack[] = {
-    0x2E, 0x01, 0x07, 0x00, 0x01, 0x00,
-    (byte)(ioa & 0xFF), (byte)((ioa >> 8) & 0xFF), (byte)((ioa >> 16) & 0xFF),
-    sco
-  };
-  sendIFrame(ack, sizeof(ack)); delay(50);
+//   // ✅ Kirim ACK (COT = 7)
+//   byte ack[] = {
+//     0x2E, 0x01, 0x07, 0x00, 0x01, 0x00,
+//     (byte)(ioa & 0xFF), (byte)((ioa >> 8) & 0xFF), (byte)((ioa >> 16) & 0xFF),
+//     sco
+//   };
+//   sendIFrame(ack, sizeof(ack)); delay(50);
 
-  // ✅ Kirim Termination (COT = 10)
-  byte term[] = {
-    0x2E, 0x01, 0x0A, 0x00, 0x01, 0x00,
-    (byte)(ioa & 0xFF), (byte)((ioa >> 8) & 0xFF), (byte)((ioa >> 16) & 0xFF),
-    sco
-  };
-  sendIFrame(term, sizeof(term));
-}
+//   // ✅ Kirim Termination (COT = 10)
+//   byte term[] = {
+//     0x2E, 0x01, 0x0A, 0x00, 0x01, 0x00,
+//     (byte)(ioa & 0xFF), (byte)((ioa >> 8) & 0xFF), (byte)((ioa >> 16) & 0xFF),
+//     sco
+//   };
+//   sendIFrame(term, sizeof(term));
+// }
 
 void IEC104Slave::handleRTC(const byte* buf, byte len) {
   const byte* time = &buf[15];
@@ -443,17 +427,17 @@ void IEC104Slave::sendTimestamped(byte ti, uint16_t ioa, byte value) {
   sendIFrame(pdu, sizeof(pdu));
 }
 
-void IEC104Slave::triggerRelay(byte command) {
-  if (command == 1) {
-    digitalWrite(PIN_OPEN, HIGH);
-    delay(800);
-    digitalWrite(PIN_OPEN, LOW);
-  } else if (command == 2) {
-    digitalWrite(PIN_CLOSE, HIGH);
-    delay(800);
-    digitalWrite(PIN_CLOSE, LOW);
-  }
-}
+// void IEC104Slave::triggerRelay(byte command) {
+//   if (command == 1) {
+//     digitalWrite(PIN_OPEN, HIGH);
+//     delay(800);
+//     digitalWrite(PIN_OPEN, LOW);
+//   } else if (command == 2) {
+//     digitalWrite(PIN_CLOSE, HIGH);
+//     delay(800);
+//     digitalWrite(PIN_CLOSE, LOW);
+//   }
+// }
 
 void IEC104Slave::sendIFrame(const byte* payload, byte len) {
   byte frame[6 + len];
