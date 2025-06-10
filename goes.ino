@@ -1,5 +1,5 @@
 /*=============================================================================|
-|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.5.0  |
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave - FCO                    v1.0  |
 |==============================================================================|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
@@ -19,7 +19,7 @@
 #include "IEC104Slave.h"
 #include <avr/wdt.h>    // untuk hardware reset penuh
 
-SoftwareSerial modem(10, 8);           // TX=10 → RX_modem, RX=8 ← TX_modem
+SoftwareSerial modem(9, 8);           // TX=9 → RX_modem, RX=8 ← TX_modem
 IEC104Slave slave(&modem);             // Konstruktor pakai Stream*
 
 const unsigned long TEST_ACT_TIMEOUT = 300000UL; // Waktu maksimal tanpa TESTFR_ACT = 5 menit
@@ -29,7 +29,7 @@ void setup() {
   Serial.begin(115200); //debug
   modem.begin(9600);
   #ifdef DEBUG
-  Serial.println(F("GOES - IEC 60870-5-104 Slave v1.4.8"));
+  Serial.println(F("PROJECT GOES - IEC 60870-5-104 Arduino Slave - FCO v1.0 "));
   #endif
   slave.begin();
   wdt_enable(WDTO_8S);  

@@ -1,5 +1,5 @@
 /*=============================================================================|
-|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.5.0  |
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave - FCO                    v1.0  |
 |==============================================================================|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
@@ -17,7 +17,7 @@
 
 #ifndef IEC104SLAVE_H
 #define IEC104SLAVE_H
-// #define DEBUG
+#define DEBUG
 // #define SET_MANUAL_RTC
 
 #include <Arduino.h>
@@ -59,18 +59,19 @@ private:
 
   uint16_t txSeq = 0, rxSeq = 0;
   uint16_t ns = 0, nr = 0;
-  bool prevRemote = false, remote = false;
-  bool prevGFD = false, gfd = false;
-  byte prevCB = 0, cb = 0;
+  bool prevDI1 = false, DI1 = false;
+  bool prevDI2 = false, DI2 = false;
+  bool prevDI3 = false, DI3 = false;
+  // byte prevCB = 0, cb = 0;
   int connectionState = 0; // 0 = disconnected, 1 = waiting STARTDT, 2 = connected
 
-  const int PIN_REMOTE = 2;
-  const int PIN_GFD = 3;
-  const int PIN_CB1 = 4;
-  const int PIN_CB2 = 5;
-  const int PIN_OPEN = 6;
-  const int PIN_CLOSE = 7;
-  const int MODEM_POWER_PIN = 9;
+  const int PIN_DI_1 = 2;
+  const int PIN_DI_2 = 3;
+  const int PIN_DI_3 = 4;
+  const int PIN_DI_4 = 5;
+  const int PIN_DO_1 = 6;
+  const int PIN_DO_2 = 7;
+  const int MODEM_POWER_PIN = 10;
 
   static const int MAX_BUFFER = 64;
 };
