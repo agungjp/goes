@@ -59,10 +59,8 @@ private:
 
   uint16_t txSeq = 0, rxSeq = 0;
   uint16_t ns = 0, nr = 0;
-  bool prevDI1 = false, DI1 = false;
-  bool prevDI2 = false, DI2 = false;
-  bool prevDI3 = false, DI3 = false;
-  // byte prevCB = 0, cb = 0;
+  int prevDI = -1;
+  int DI = 0;
   int connectionState = 0; // 0 = disconnected, 1 = waiting STARTDT, 2 = connected
 
   const int PIN_DI_1 = 2;
