@@ -71,7 +71,7 @@ void IEC104Slave::setupConnection() {
   modem->println("AT"); updateSerial(); delay(5000);
   modem->println("AT+CGATT=1"); updateSerial();
   modem->println("AT+CIPMODE=1"); updateSerial();
-  modem->println("AT+CSTT=\"plnlampung\""); updateSerial();
+  modem->println("AT+CSTT=\"M2MAPDKALTIMRA\""); updateSerial();
   modem->println("AT+CIICR"); updateSerial();
   modem->println("AT+CIFSR"); updateSerial();
   modem->println("AT+CIPSERVER=1,2404"); updateSerial();
