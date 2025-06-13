@@ -65,9 +65,9 @@ private:
   int connectionState = 0; // 0 = disconnected, 1 = waiting STARTDT, 2 = connected
 
   const int PIN_REMOTE = 2;
-  const int PIN_GFD = 3;
-  const int PIN_CB1 = 4;
-  const int PIN_CB2 = 5;
+  const int PIN_GFD = 12;
+  const int PIN_CB1 = 5;
+  const int PIN_CB2 = 4;
   const int PIN_OPEN = 6;
   const int PIN_CLOSE = 7;
   const int MODEM_POWER_PIN = 9;

@@ -49,7 +49,7 @@ void IEC104Slave::setupPins() {
   pinMode(MODEM_POWER_PIN, OUTPUT);
   pinMode(PIN_OPEN, OUTPUT);
   pinMode(PIN_CLOSE, OUTPUT);
-  pinMode(LED_BUILTIN, OUTPUT);
+  // pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(PIN_OPEN, LOW);
   digitalWrite(PIN_CLOSE, LOW);
   digitalWrite(MODEM_POWER_PIN, LOW);
