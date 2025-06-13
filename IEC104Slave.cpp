@@ -73,7 +73,7 @@ void IEC104Slave::setupConnection() {
   modem->println("AT"); updateSerial(); delay(5000);
   modem->println("AT+CGATT=1"); updateSerial();
   modem->println("AT+CIPMODE=1"); updateSerial();
-  modem->println("AT+CSTT=\"plnlampung\""); updateSerial();
+  modem->println("AT+CSTT=\"m2mplnapd\""); updateSerial();
   modem->println("AT+CIICR"); updateSerial();
   modem->println("AT+CIFSR"); updateSerial();
   modem->println("AT+CIPSERVER=1,2404"); updateSerial();
@@ -140,14 +140,14 @@ void IEC104Slave::checkCOS() {
     prevCB = cb;
   }
 
-  if (gfd != prevGFD) {
-    sendTimestamped(30, 1002, gfd ? 1 : 0);
-    prevGFD = gfd;
-  }
-  if (cb != prevCB) {
-    sendTimestamped(31, 11000, cb);
-    prevCB = cb;
-  }
+  // if (gfd != prevGFD) {
+  //   sendTimestamped(30, 1002, gfd ? 1 : 0);
+  //   prevGFD = gfd;
+  // }
+  // if (cb != prevCB) {
+  //   sendTimestamped(31, 11000, cb);
+  //   prevCB = cb;
+  // }
 }
 
 void IEC104Slave::listen() {

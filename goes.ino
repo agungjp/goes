@@ -29,7 +29,7 @@ void setup() {
   Serial.begin(115200); //debug
   modem.begin(9600);
   #ifdef DEBUG
-  Serial.println(F("GOES - IEC 60870-5-104 Slave v1.4.8"));
+  Serial.println(F("GOES - IEC 60870-5-104 Slave v1.5.0"));
   #endif
   slave.begin();
   wdt_enable(WDTO_8S);  
