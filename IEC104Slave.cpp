@@ -49,7 +49,7 @@ void IEC104Slave::setupPins() {
   pinMode(MODEM_POWER_PIN, OUTPUT);
   pinMode(PIN_OPEN, OUTPUT);
   pinMode(PIN_CLOSE, OUTPUT);
-  pinMode(LED_BUILTIN, OUTPUT);
+  // pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(PIN_OPEN, LOW);
   digitalWrite(PIN_CLOSE, LOW);
   digitalWrite(MODEM_POWER_PIN, LOW);
@@ -83,6 +83,7 @@ void IEC104Slave::setupConnection() {
 // kskt = M2MAPDKSKT
 // sumbar = apdsumbarm2m / apdsumbarm2m.xl
 // kaltimra =M2MAPDKALTIMRA
+// lampung =plnlampung
 
 void IEC104Slave::updateSerial() {
   delay(2000);
@@ -139,14 +140,14 @@ void IEC104Slave::checkCOS() {
     prevCB = cb;
   }
 
-  if (gfd != prevGFD) {
-    sendTimestamped(30, 1002, gfd ? 1 : 0);
-    prevGFD = gfd;
-  }
-  if (cb != prevCB) {
-    sendTimestamped(31, 11000, cb);
-    prevCB = cb;
-  }
+  // if (gfd != prevGFD) {
+  //   sendTimestamped(30, 1002, gfd ? 1 : 0);
+  //   prevGFD = gfd;
+  // }
+  // if (cb != prevCB) {
+  //   sendTimestamped(31, 11000, cb);
+  //   prevCB = cb;
+  // }
 }
 
 void IEC104Slave::listen() {

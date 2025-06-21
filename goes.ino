@@ -37,7 +37,7 @@ void setup() {
 }
 
 void loop() {
-  digitalWrite(LED_BUILTIN, millis() % 1000 < 100);
+  // digitalWrite(LED_BUILTIN, millis() % 1000 < 100);
   slave.run();  // renamed from loop()
   // Kalau sudah lebih dari 5 menit tanpa TESTFR_ACT → hardware reset
   if (millis() - lastTestAct > TEST_ACT_TIMEOUT) {
