@@ -439,7 +439,7 @@ void IEC104Slave::convertCP56Time2a(uint8_t* buffer) {
 void IEC104Slave::sendTimestamped(byte ti, uint16_t ioa, byte value) {
   uint8_t cp56[7];
   convertCP56Time2a(cp56);
-  byte pdu[17] = {ti, 1, 6, 0, 1, 0, (byte)(ioa & 0xFF), (byte)(ioa >> 8), 0x00, value};
+  byte pdu[17] = {ti, 1, 3, 0, 1, 0, (byte)(ioa & 0xFF), (byte)(ioa >> 8), 0x00, value};
   memcpy(&pdu[10], cp56, 7);
   sendIFrame(pdu, sizeof(pdu));
 }
