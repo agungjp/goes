@@ -1,5 +1,5 @@
 /*=============================================================================|
-|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.5.0  |
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.6.0  |
 |==============================================================================|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
@@ -110,10 +110,21 @@ void IEC104Slave::updateInputs() {
 }
 
 void IEC104Slave::run() {
+  updateRelay();
   updateInputs();
+  // Handle pending TI 46 ACK/Termination
+  if (ti46_pending) {
+    // Jika status CB sudah sesuai permintaan master (atau timeout)
+    if (cb == ti46_sco || (millis() - ti46_start > ti46_timeout)) {
+      sendTI46AckAndTerm(ti46_ioa, ti46_sco);
+      ti46_pending = false; // Reset flag
+    } else {
+      // Masih proses: jangan kirim checkCOS status CB
+      // Optional: return; jika ingin benar-benar blokir event lain
+    }
+  }
   checkCOS();
   listen();
-  checkCOS();
 }
 
 void IEC104Slave::checkCOS() {
@@ -133,21 +144,15 @@ void IEC104Slave::checkCOS() {
     prevGFD = gfd;
   }
   if (cb != prevCB) {
+    if(remote){
+      return;
+    }
     #ifdef DEBUG
     Serial.print("[DEBUG] CB berubah: "); Serial.print(prevCB); Serial.print(" → "); Serial.println(cb);
     #endif
     sendTimestamped(31, 11000, cb);
     prevCB = cb;
   }
-
-  // if (gfd != prevGFD) {
-  //   sendTimestamped(30, 1002, gfd ? 1 : 0);
-  //   prevGFD = gfd;
-  // }
-  // if (cb != prevCB) {
-  //   sendTimestamped(31, 11000, cb);
-  //   prevCB = cb;
-  // }
 }
 
 void IEC104Slave::listen() {
@@ -307,75 +312,89 @@ void IEC104Slave::handleUFrame(const byte* buf, byte len) {
 }
 
 void IEC104Slave::handleGI(const byte* buf, byte len) {
+  #ifdef DEBUG
+    Serial.println("Ti 100 (General Introgation)");
+  #endif
   byte ca_lo = buf[10];
   byte ca_hi = buf[11];
   updateInputs();
 
   byte actCon[] = {0x64, 0x01, 0x07, 0x00, ca_lo, ca_hi, 0x00, 0x00, 0x00, 0x14};
-  sendIFrame(actCon, sizeof(actCon)); delay(50);
+  sendIFrame(actCon, sizeof(actCon)); delay(20);
 
   byte ti1[] = {
     0x01, 0x02, 0x14, 0x00, ca_lo, ca_hi,
     0xE9, 0x03, 0x00, remote ? 0 : 1,
     0xEA, 0x03, 0x00, gfd ? 1 : 0
   };
-  sendIFrame(ti1, sizeof(ti1)); delay(50);
+  sendIFrame(ti1, sizeof(ti1)); delay(20);
 
   byte ti3[] = {
     0x03, 0x01, 0x14, 0x00, ca_lo, ca_hi,
     0xF8, 0x2A, 0x00, cb
   };
-  sendIFrame(ti3, sizeof(ti3)); delay(50);
+  sendIFrame(ti3, sizeof(ti3)); delay(20);
 
   byte term[] = {0x64, 0x01, 0x0A, 0x00, ca_lo, ca_hi, 0x00, 0x00, 0x00, 0x14};
   sendIFrame(term, sizeof(term));
 }
 
 void IEC104Slave::handleTI46(const byte* d, byte len) {
-
-  // ✅ Perbaikan: IOA pakai 3 byte (little-endian)
   uint32_t ioa = d[6] | (d[7] << 8) | (d[8] << 16);
   byte sco = d[9] & 0x03;
 
   #ifdef DEBUG
-  Serial.print("[TI46] IOA: ");
-  Serial.print(ioa);
-  Serial.print(" | SCO: ");
-  Serial.println(sco);
+  Serial.print("[TI46] IOA: "); Serial.print(ioa);
+  Serial.print(" | SCO: "); Serial.println(sco);
   #endif
 
   if (!remote) {
     #ifdef DEBUG
     Serial.println("[REJECT] Mode LOCAL");
     #endif
-  } else if ((sco == 1 && cb == 1) || (sco == 2 && cb == 2)) {
+    return;
+  } 
+  if ((sco == 1 && cb == 1) || (sco == 2 && cb == 2)) {
     #ifdef DEBUG
     Serial.println("[REJECT] Status CB sudah sesuai");
     #endif
-  } else if (sco == 1 || sco == 2) {
-    triggerRelay(sco);
-  } else {
-    #ifdef DEBUG
-    Serial.println("[REJECT] SCO tidak valid");
-    #endif
-  }
+    // Kirim ACK + Termination langsung, tidak perlu trigger relay
+    sendTI46AckAndTerm(ioa, sco);
+    return;
+  } 
+  if (sco == 1 || sco == 2) {
+    triggerRelay(sco); // Non-blocking
+    ti46_pending = true;
+    ti46_ioa = ioa;
+    ti46_sco = sco;
+    ti46_start = millis();
+    // **JANGAN kirim ACK/Termination di sini!**
+    return;
+  } 
+  #ifdef DEBUG
+  Serial.println("[REJECT] SCO tidak valid");
+  #endif
+}
 
-  // ✅ Kirim ACK (COT = 7)
+// Helper
+void IEC104Slave::sendTI46AckAndTerm(uint32_t ioa, byte sco) {
   byte ack[] = {
     0x2E, 0x01, 0x07, 0x00, 0x01, 0x00,
     (byte)(ioa & 0xFF), (byte)((ioa >> 8) & 0xFF), (byte)((ioa >> 16) & 0xFF),
     sco
   };
-  sendIFrame(ack, sizeof(ack)); delay(50);
-
-  // ✅ Kirim Termination (COT = 10)
+  sendIFrame(ack, sizeof(ack)); // delay(20) di dalam sendIFrame
   byte term[] = {
     0x2E, 0x01, 0x0A, 0x00, 0x01, 0x00,
     (byte)(ioa & 0xFF), (byte)((ioa >> 8) & 0xFF), (byte)((ioa >> 16) & 0xFF),
     sco
   };
   sendIFrame(term, sizeof(term));
+  #ifdef DEBUG
+    Serial.println("TI 46 Termination - Selesai");
+  #endif
 }
+
 
 void IEC104Slave::handleRTC(const byte* buf, byte len) {
   const byte* time = &buf[15];
@@ -445,14 +464,26 @@ void IEC104Slave::sendTimestamped(byte ti, uint16_t ioa, byte value) {
 }
 
 void IEC104Slave::triggerRelay(byte command) {
+  if (relayState != 0) return; // Jangan trigger kalau masih aktif
+
   if (command == 1) {
     digitalWrite(PIN_OPEN, HIGH);
-    delay(800);
-    digitalWrite(PIN_OPEN, LOW);
+    relayStartTime = millis();
+    relayState = 1; // open relay aktif
   } else if (command == 2) {
     digitalWrite(PIN_CLOSE, HIGH);
-    delay(800);
+    relayStartTime = millis();
+    relayState = 2; // close relay aktif
+  }
+}
+
+void IEC104Slave::updateRelay() {
+  if (relayState == 1 && millis() - relayStartTime >= relayDuration) {
+    digitalWrite(PIN_OPEN, LOW);
+    relayState = 0;
+  } else if (relayState == 2 && millis() - relayStartTime >= relayDuration) {
     digitalWrite(PIN_CLOSE, LOW);
+    relayState = 0;
   }
 }
 
@@ -476,7 +507,7 @@ void IEC104Slave::sendIFrame(const byte* payload, byte len) {
   Serial.println();
   #endif
   txSeq++;
-  delay(100);
+  delay(20);
 }
 
 void IEC104Slave::sendUFormat(byte controlByte) {
@@ -492,5 +523,5 @@ void IEC104Slave::sendUFormat(byte controlByte) {
   Serial.println();
   #endif
   
-  delay(50);
+  delay(20);
 }

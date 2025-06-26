@@ -1,5 +1,5 @@
 /*=============================================================================|
-|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.5.0  |
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.6.0  |
 |==============================================================================|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
@@ -17,7 +17,7 @@
 
 #ifndef IEC104SLAVE_H
 #define IEC104SLAVE_H
-#define DEBUG
+// #define DEBUG
 // #define SET_MANUAL_RTC
 
 #include <Arduino.h>
@@ -49,10 +49,12 @@ private:
   void sendUFormat(byte controlByte);
   void convertCP56Time2a(uint8_t* buffer);
   void triggerRelay(byte command);
+  void updateRelay();
   void updateSerial();
   void handleModemText(String text);
   void restartModem();
   bool readByteTimeout(Stream& s, uint8_t& out, unsigned long timeout = 200);
+  void IEC104Slave::sendTI46AckAndTerm(uint32_t ioa, byte sco);
 
   DS3231 rtc = DS3231(SDA, SCL);
   Stream* modem = nullptr;
@@ -63,6 +65,17 @@ private:
   bool prevGFD = false, gfd = false;
   byte prevCB = 0, cb = 0;
   int connectionState = 0; // 0 = disconnected, 1 = waiting STARTDT, 2 = connected
+
+  // --- Flag TI 46 ---
+  bool ti46_pending = false;       // Apakah ada perintah TI 46 yang belum selesai?
+  uint32_t ti46_ioa = 0;           // Simpan IOA dari command terakhir
+  byte ti46_sco = 0;               // Simpan SCO dari command terakhir
+  unsigned long ti46_start = 0;    // Waktu mulai command
+  const unsigned long ti46_timeout = 8000; // Optional: timeout max 8 detik
+
+  unsigned long relayStartTime = 0;
+  byte relayState = 0;        // 0: idle, 1: open aktif, 2: close aktif
+  const unsigned long relayDuration = 800; // ms
 
   const int PIN_REMOTE = 2;
   const int PIN_GFD = 12;
