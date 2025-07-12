@@ -17,7 +17,7 @@
 
 #ifndef IEC104SLAVE_H
 #define IEC104SLAVE_H
-// #define DEBUG
+#define DEBUG
 // #define SET_MANUAL_RTC
 
 #include <Arduino.h>
