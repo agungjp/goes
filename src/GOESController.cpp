@@ -27,6 +27,7 @@ void GOESController::begin() {
   pinMode(9, OUTPUT);         // modem power
 
   modem.begin();      // Setup modem atau ethernet
+  relay.begin();
   protocol.begin(&ioaMap, &eventQueue, &modem); // Kirim pointer untuk akses ke manager lain
 }
 

@@ -1,9 +1,12 @@
 #include "ModemManager.h"
 
-ModemManager::ModemManager() {}
+ModemManager::ModemManager(uint8_t rxPin, uint8_t txPin) : _rxPin(rxPin), _txPin(txPin){
+  modemSerial = new SoftwareSerial(_rxPin, _txPin);
+}
 
-void ModemManager::begin() {
+void ModemManager::begin(long baud) {
   // Setup serial modem (atau Ethernet)
+  modemSerial->begin(baud);
 }
 
 void ModemManager::update() {
@@ -12,14 +15,15 @@ void ModemManager::update() {
 
 bool ModemManager::available() {
   // Return apakah ada data masuk dari modem
-  return false;
+  return modemSerial->available();
 }
 
 int ModemManager::read() {
   // Ambil data RX dari modem
-  return -1;
+  return modemSerial->read();
 }
 
 void ModemManager::write(const uint8_t* buf, size_t len) {
   // Kirim data ke modem
+  modemSerial->write(buf, len);
 }

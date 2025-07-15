@@ -5,6 +5,7 @@
 #include "EventQueue.h"
 #include "ModemManager.h"
 #include "IEC104Protocol.h"
+#include "RelayController.h"
 
 typedef void (*TestActCallback)();
 
