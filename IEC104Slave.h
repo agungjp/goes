@@ -78,7 +78,8 @@ private:
   const unsigned long relayDuration = 800; // ms
 
   const int PIN_REMOTE = 2;
-  const int PIN_GFD = 12;
+  const int PIN_GFD = 3;
+  const int PIN_SUPPLY = 12;
   const int PIN_CB1 = 5;
   const int PIN_CB2 = 4;
   const int PIN_OPEN = 6;
