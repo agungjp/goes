@@ -1,5 +1,5 @@
 /*=============================================================================|
-|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.6.0  |
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.6.1  |
 |==============================================================================|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
@@ -17,73 +17,94 @@
 
 #include "IEC104Slave.h"
 #include <string.h>
-extern unsigned long lastTestAct;
 
 IEC104Slave::IEC104Slave(Stream* serial) {
   modem = serial;
 }
 
+void IEC104Slave::setupConnection() {
+  delay(15000);
+  modem->println("AT"); updateSerial(); delay(5000);
+  modem->println("AT+CSQ"); updateSerial();
+  modem->println("AT+CGATT=1"); updateSerial();
+  modem->println("AT+CIPMODE=1"); updateSerial();
+  modem->println("AT+CSTT=\"m2mplnapd\""); updateSerial();
+  modem->println("AT+CIICR"); updateSerial();delay(3000);
+  modem->println("AT+CIFSR"); updateSerial();
+  modem->println("AT+CIPSERVER=1,2404"); updateSerial();
+  modem->println("AT+CIPSTATUS"); updateSerial();
+}
+
 void IEC104Slave::begin() {
   rtc.begin();
-  #ifdef SET_MANUAL_RTC
-  // rtc.setDOW(5);                   // 1.senin 2.selasa 3.rabu 4.kamis 5.jumat 6.sabtu 7.minggu
-  // rtc.setDate(11, 4, 2025);        // Contoh: 10 Mei 2024
-  // rtc.setTime(17, 30, 00);         // Contoh: 14:33:00
-  #endif
-
   setupPins();
   restartModem();
   setupConnection();
-
   updateInputs();
-  prevRemote = remote;
-  prevGFD = gfd;
-  prevCB = cb;
+  lastTestAct = millis();
+  // sendUFormat(0x07);
+}
+
+void IEC104Slave::run() {
+  updateRelay();
+  updateInputs();
+  // Handle pending TI 46 ACK/Termination
+  if (cbBusy) {
+    // Cek apakah status CB sudah sesuai permintaan
+    bool cb_ok = false;
+    if (ti46_pending_ioa == 23000) cb_ok = (cb1 == ti46_pending_sco);
+    else if (ti46_pending_ioa == 23001) cb_ok = (cb2 == ti46_pending_sco);
+    // Sudah berubah atau timeout
+    if (cb_ok || (millis() - ti46_pending_start > ti46_timeout)) {
+      sendTI46AckAndTerm(ti46_pending_ioa, ti46_pending_sco);
+      cbBusy = false; // Reset, baru boleh eksekusi TI 46 baru
+    }
+    // Jika belum, jangan eksekusi command lain
+    // (bisa tambahkan antrian queue jika mau multi-command)
+  }
+  checkCOS();
+  listen();
+  // if (millis() - lastTestAct > TEST_ACT_TIMEOUT) {
+  //   softwareReset();
+  // }
 }
 
 void IEC104Slave::setupPins() {
-  pinMode(PIN_REMOTE, INPUT_PULLUP);
+  // Input pin
   pinMode(PIN_GFD, INPUT_PULLUP);
-  pinMode(PIN_CB1, INPUT_PULLUP);
-  pinMode(PIN_CB2, INPUT_PULLUP);
-  pinMode(MODEM_POWER_PIN, OUTPUT);
-  pinMode(PIN_OPEN, OUTPUT);
-  pinMode(PIN_CLOSE, OUTPUT);
-  // pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(PIN_OPEN, LOW);
-  digitalWrite(PIN_CLOSE, LOW);
-  digitalWrite(MODEM_POWER_PIN, LOW);
+  pinMode(PIN_SUPPLY, INPUT_PULLUP);
+  pinMode(PIN_REMOTE1, INPUT_PULLUP);
+  pinMode(PIN_CB1_OPEN, INPUT_PULLUP);
+  pinMode(PIN_CB1_CLOSE, INPUT_PULLUP);
+  pinMode(PIN_REMOTE2, INPUT_PULLUP);
+  pinMode(PIN_CB2_OPEN, INPUT_PULLUP);
+  pinMode(PIN_CB2_CLOSE, INPUT_PULLUP);
+  // Output pin
+  pinMode(PIN_MODEM_POWER, OUTPUT);
+  pinMode(PIN_CB1_OUT_OPEN, OUTPUT);
+  pinMode(PIN_CB1_OUT_CLOSE, OUTPUT);
+  pinMode(PIN_CB2_OUT_OPEN, OUTPUT);
+  pinMode(PIN_CB2_OUT_CLOSE, OUTPUT);
+  // Inisialisasi
+  digitalWrite(PIN_CB1_OUT_OPEN, LOW);
+  digitalWrite(PIN_CB1_OUT_CLOSE, LOW);
+  digitalWrite(PIN_CB2_OUT_OPEN, LOW);
+  digitalWrite(PIN_CB2_OUT_CLOSE, LOW);
+  digitalWrite(PIN_MODEM_POWER, LOW);
 }
 
 void IEC104Slave::restartModem() {
   #ifdef DEBUG
   Serial.println("🔁 Restarting modem via D9...");
   #endif
-  digitalWrite(MODEM_POWER_PIN, HIGH);
+  digitalWrite(PIN_MODEM_POWER, HIGH);
   delay(500);
-  digitalWrite(MODEM_POWER_PIN, LOW);
+  digitalWrite(PIN_MODEM_POWER, LOW);
   delay(500);
   #ifdef DEBUG
   Serial.println("✅ Restart done.");
   #endif
 }
-
-void IEC104Slave::setupConnection() {
-  delay(15000);
-  modem->println("AT"); updateSerial(); delay(5000);
-  modem->println("AT+CGATT=1"); updateSerial();
-  modem->println("AT+CIPMODE=1"); updateSerial();
-  modem->println("AT+CSTT=\"m2mplnapd\""); updateSerial();
-  modem->println("AT+CIICR"); updateSerial();
-  modem->println("AT+CIFSR"); updateSerial();
-  modem->println("AT+CIPSERVER=1,2404"); updateSerial();
-}
-
-// jabar = m2mplnapd
-// kskt = M2MAPDKSKT
-// sumbar = apdsumbarm2m / apdsumbarm2m.xl
-// kaltimra =M2MAPDKALTIMRA
-// lampung =plnlampung
 
 void IEC104Slave::updateSerial() {
   delay(2000);
@@ -94,48 +115,35 @@ void IEC104Slave::updateSerial() {
 }
 
 void IEC104Slave::updateInputs() {
-  prevRemote = remote;
-  prevGFD = gfd;
-  prevCB = cb;
+  prevRemote1 = remote1;
+  prevRemote2 = remote2;
+  prevGFD     = gfd;
+  prevSupply  = supply;
+  prevCB1     = cb1;
+  prevCB2     = cb2;
 
-  remote = digitalRead(PIN_REMOTE) == LOW; // HIGH = Local; LOW = Remote
-  gfd = digitalRead(PIN_GFD);
-
-  bool cb1 = digitalRead(PIN_CB1);
-  bool cb2 = digitalRead(PIN_CB2);
-  if (!cb1 && !cb2) cb = 0;
-  else if (cb1 && !cb2) cb = 1;
-  else if (!cb1 && cb2) cb = 2;
-  else cb = 3;
+  remote1 = digitalRead(PIN_REMOTE1) == LOW;// IOA 1001
+  gfd = digitalRead(PIN_GFD) == LOW;         // IOA 1002
+  remote2 = digitalRead(PIN_REMOTE2) == LOW; // IOA 1003
+  supply = digitalRead(PIN_SUPPLY);   // IOA 1004
+  bool cb1_open  = digitalRead(PIN_CB1_OPEN);
+  bool cb1_close = digitalRead(PIN_CB1_CLOSE);
+  cb1 = getDoublePoint(cb1_open, cb1_close);  // IOA 11000
+  bool cb2_open  = digitalRead(PIN_CB2_OPEN);
+  bool cb2_close = digitalRead(PIN_CB2_CLOSE);
+  cb2 = getDoublePoint(cb2_open, cb2_close);  // IOA 11001
 }
 
-void IEC104Slave::run() {
-  updateRelay();
-  updateInputs();
-  // Handle pending TI 46 ACK/Termination
-  if (ti46_pending) {
-    // Jika status CB sudah sesuai permintaan master (atau timeout)
-    if (cb == ti46_sco || (millis() - ti46_start > ti46_timeout)) {
-      sendTI46AckAndTerm(ti46_ioa, ti46_sco);
-      ti46_pending = false; // Reset flag
-    } else {
-      // Masih proses: jangan kirim checkCOS status CB
-      // Optional: return; jika ingin benar-benar blokir event lain
-    }
-  }
-  checkCOS();
-  listen();
+// Fungsi helper double point IEC104 (Open = 1, Close = 2, Unknown = 0/3)
+uint8_t IEC104Slave::getDoublePoint(uint8_t open, uint8_t close) {
+  if (!open && !close) return 0; // Unknown
+  else if (!open && close) return 1; // Open
+  else if (open && !close) return 2; // Close
+  else return 0; // Unknown
 }
 
 void IEC104Slave::checkCOS() {
   // Serial.println("[DEBUG] Memeriksa COS...");
-  if (remote != prevRemote) {
-    #ifdef DEBUG
-    Serial.print("[DEBUG] Remote berubah: "); Serial.print(prevRemote); Serial.print(" → "); Serial.println(remote);
-    #endif
-    sendTimestamped(30, 1001, remote ? 0 : 1);
-    prevRemote = remote;
-  }
   if (gfd != prevGFD) {
     #ifdef DEBUG
     Serial.print("[DEBUG] GFD berubah: "); Serial.print(prevGFD); Serial.print(" → "); Serial.println(gfd);
@@ -143,15 +151,42 @@ void IEC104Slave::checkCOS() {
     sendTimestamped(30, 1002, gfd ? 1 : 0);
     prevGFD = gfd;
   }
-  if (cb != prevCB) {
-    if(remote){
-      return;
-    }
+  if (supply != prevSupply) {
     #ifdef DEBUG
-    Serial.print("[DEBUG] CB berubah: "); Serial.print(prevCB); Serial.print(" → "); Serial.println(cb);
+    Serial.print("[DEBUG] GFD berubah: "); Serial.print(prevSupply); Serial.print(" → "); Serial.println(supply);
     #endif
-    sendTimestamped(31, 11000, cb);
-    prevCB = cb;
+    sendTimestamped(30, 1004, supply ? 1 : 0);
+    prevSupply = supply;
+  }
+  if (remote1 != prevRemote1) {
+    #ifdef DEBUG
+    Serial.print("[DEBUG] Remote 1 berubah: "); Serial.print(prevRemote1); Serial.print(" → "); Serial.println(remote1);
+    #endif
+    sendTimestamped(30, 1001, remote1 ? 0 : 1);
+    prevRemote1 = remote1;
+  }
+  if (cb1 != prevCB1) {
+    if(remote1){return;}
+    #ifdef DEBUG
+    Serial.print("[DEBUG] CB berubah: "); Serial.print(prevCB1); Serial.print(" → "); Serial.println(cb1);
+    #endif
+    sendTimestamped(31, 11000, cb1);
+    prevCB1 = cb1;
+  }
+  if (remote2 != prevRemote2) {
+    #ifdef DEBUG
+    Serial.print("[DEBUG] Remote 2 berubah: "); Serial.print(prevRemote2); Serial.print(" → "); Serial.println(remote2);
+    #endif
+    sendTimestamped(30, 1003, remote2 ? 0 : 1);
+    prevRemote2 = remote2;
+  }
+  if (cb2 != prevCB2) {
+    if(remote2){return;}
+    #ifdef DEBUG
+    Serial.print("[DEBUG] CB berubah: "); Serial.print(prevCB2); Serial.print(" → "); Serial.println(cb2);
+    #endif
+    sendTimestamped(31, 11001, cb2);
+    prevCB2 = cb2;
   }
 }
 
@@ -203,15 +238,6 @@ void IEC104Slave::listen() {
       }
     }
   }
-}
-
-bool IEC104Slave::readByteTimeout(Stream& s, uint8_t& out, unsigned long timeout) {
-  unsigned long start = millis();
-  while (!s.available()) {
-    if (millis() - start >= timeout) return false;
-  }
-  out = s.read();
-  return true;
 }
 
 void IEC104Slave::handleModemText(String text) {
@@ -320,23 +346,33 @@ void IEC104Slave::handleGI(const byte* buf, byte len) {
   updateInputs();
 
   byte actCon[] = {0x64, 0x01, 0x07, 0x00, ca_lo, ca_hi, 0x00, 0x00, 0x00, 0x14};
-  sendIFrame(actCon, sizeof(actCon)); delay(20);
+  sendIFrame(actCon, sizeof(actCon)); delay(50);
 
   byte ti1[] = {
-    0x01, 0x02, 0x14, 0x00, ca_lo, ca_hi,
-    0xE9, 0x03, 0x00, remote ? 0 : 1,
-    0xEA, 0x03, 0x00, gfd ? 1 : 0
+    0x01, 0x04, 0x14, 0x00, ca_lo, ca_hi,
+    // Remote/Local cell 1 (IOA 1001)
+    0xE9, 0x03, 0x00, remote1 ? 0 : 1,
+    // GFD (IOA 1002)
+    0xEA, 0x03, 0x00, gfd ? 1 : 0,
+    // Remote/Local cell 2 (IOA 1003)
+    0xEB, 0x03, 0x00, remote2 ? 0 : 1,
+    // Supply (IOA 1004)
+    0xEC, 0x03, 0x00, supply ? 1 : 0
   };
-  sendIFrame(ti1, sizeof(ti1)); delay(20);
+  sendIFrame(ti1, sizeof(ti1)); delay(50);
 
   byte ti3[] = {
-    0x03, 0x01, 0x14, 0x00, ca_lo, ca_hi,
-    0xF8, 0x2A, 0x00, cb
+    0x03, 0x02, 0x14, 0x00, ca_lo, ca_hi,
+    // CB1 (IOA 11000)
+    0xF8, 0x2A, 0x00, cb1,
+    // CB2 (IOA 11001)
+    0xF9, 0x2A, 0x00, cb2
   };
-  sendIFrame(ti3, sizeof(ti3)); delay(20);
+  sendIFrame(ti3, sizeof(ti3)); delay(50);
 
   byte term[] = {0x64, 0x01, 0x0A, 0x00, ca_lo, ca_hi, 0x00, 0x00, 0x00, 0x14};
   sendIFrame(term, sizeof(term));
+  delay(200);
 }
 
 void IEC104Slave::handleTI46(const byte* d, byte len) {
@@ -348,48 +384,93 @@ void IEC104Slave::handleTI46(const byte* d, byte len) {
   Serial.print(" | SCO: "); Serial.println(sco);
   #endif
 
-  if (!remote) {
+  if (cbBusy) {
     #ifdef DEBUG
-    Serial.println("[REJECT] Mode LOCAL");
+    Serial.println("[TI46] CB sedang proses. Abaikan atau simpan antrian TI46 berikutnya (satu per satu).");
     #endif
+    // Optional: simpan antrian di variabel jika mau
     return;
-  } 
-  if ((sco == 1 && cb == 1) || (sco == 2 && cb == 2)) {
-    #ifdef DEBUG
-    Serial.println("[REJECT] Status CB sudah sesuai");
-    #endif
-    // Kirim ACK + Termination langsung, tidak perlu trigger relay
-    sendTI46AckAndTerm(ioa, sco);
-    return;
-  } 
-  if (sco == 1 || sco == 2) {
-    triggerRelay(sco); // Non-blocking
-    ti46_pending = true;
-    ti46_ioa = ioa;
-    ti46_sco = sco;
-    ti46_start = millis();
-    // **JANGAN kirim ACK/Termination di sini!**
-    return;
-  } 
-  #ifdef DEBUG
-  Serial.println("[REJECT] SCO tidak valid");
-  #endif
+  }
+
+  // Tidak ada eksekusi relay sedang aktif, proses sekarang
+  cbBusy = true;
+  ti46_pending_ioa = ioa;
+  ti46_pending_sco = sco;
+  ti46_pending_start = millis();
+
+  // Eksekusi relay 800ms (pulse)
+  if (ioa == 23000) { // CB1
+    if (sco == 1) {
+      digitalWrite(PIN_CB1_OUT_OPEN, HIGH);
+      relayActiveCB1Open = true;
+      relayStartCB1Open = millis();
+    }
+    else if (sco == 2) {
+      digitalWrite(PIN_CB1_OUT_CLOSE, HIGH);
+      relayActiveCB1Close = true;
+      relayStartCB1Close = millis();
+    }
+  }
+  else if (ioa == 23001) { // CB2
+    if (sco == 1) {
+      digitalWrite(PIN_CB2_OUT_OPEN, HIGH);
+      relayActiveCB2Open = true;
+      relayStartCB2Open = millis();
+    }
+    else if (sco == 2) {
+      digitalWrite(PIN_CB2_OUT_CLOSE, HIGH);
+      relayActiveCB2Close = true;
+      relayStartCB2Close = millis();
+    }
+  }
+}
+
+void IEC104Slave::updateRelay() {
+  if (relayActiveCB1Open && millis() - relayStartCB1Open >= relayPulse) {
+    digitalWrite(PIN_CB1_OUT_OPEN, LOW);
+    relayActiveCB1Open = false;
+  }
+  if (relayActiveCB1Close && millis() - relayStartCB1Close >= relayPulse) {
+    digitalWrite(PIN_CB1_OUT_CLOSE, LOW);
+    relayActiveCB1Close = false;
+  }
+  if (relayActiveCB2Open && millis() - relayStartCB2Open >= relayPulse) {
+    digitalWrite(PIN_CB2_OUT_OPEN, LOW);
+    relayActiveCB2Open = false;
+  }
+  if (relayActiveCB2Close && millis() - relayStartCB2Close >= relayPulse) {
+    digitalWrite(PIN_CB2_OUT_CLOSE, LOW);
+    relayActiveCB2Close = false;
+  }
+}
+
+void IEC104Slave::handleDoubleCommand(uint32_t ioa, uint8_t command) {
+  if (ioa == 23000) { // CB1
+    if (command == 1) digitalWrite(PIN_CB1_OUT_OPEN, HIGH);
+    if (command == 2) digitalWrite(PIN_CB1_OUT_CLOSE, HIGH);
+  }
+  if (ioa == 23001) { // CB2
+    if (command == 1) digitalWrite(PIN_CB2_OUT_OPEN, HIGH);
+    if (command == 2) digitalWrite(PIN_CB2_OUT_CLOSE, HIGH);
+  }
 }
 
 // Helper
 void IEC104Slave::sendTI46AckAndTerm(uint32_t ioa, byte sco) {
+  // ACK
   byte ack[] = {
     0x2E, 0x01, 0x07, 0x00, 0x01, 0x00,
     (byte)(ioa & 0xFF), (byte)((ioa >> 8) & 0xFF), (byte)((ioa >> 16) & 0xFF),
     sco
   };
-  sendIFrame(ack, sizeof(ack)); // delay(20) di dalam sendIFrame
+  sendIFrame(ack, sizeof(ack)); delay(50);
+  // Termination
   byte term[] = {
     0x2E, 0x01, 0x0A, 0x00, 0x01, 0x00,
     (byte)(ioa & 0xFF), (byte)((ioa >> 8) & 0xFF), (byte)((ioa >> 16) & 0xFF),
     sco
   };
-  sendIFrame(term, sizeof(term));
+  sendIFrame(term, sizeof(term)); delay(50);
   #ifdef DEBUG
     Serial.println("TI 46 Termination - Selesai");
   #endif
@@ -463,30 +544,6 @@ void IEC104Slave::sendTimestamped(byte ti, uint16_t ioa, byte value) {
   sendIFrame(pdu, sizeof(pdu));
 }
 
-void IEC104Slave::triggerRelay(byte command) {
-  if (relayState != 0) return; // Jangan trigger kalau masih aktif
-
-  if (command == 1) {
-    digitalWrite(PIN_OPEN, HIGH);
-    relayStartTime = millis();
-    relayState = 1; // open relay aktif
-  } else if (command == 2) {
-    digitalWrite(PIN_CLOSE, HIGH);
-    relayStartTime = millis();
-    relayState = 2; // close relay aktif
-  }
-}
-
-void IEC104Slave::updateRelay() {
-  if (relayState == 1 && millis() - relayStartTime >= relayDuration) {
-    digitalWrite(PIN_OPEN, LOW);
-    relayState = 0;
-  } else if (relayState == 2 && millis() - relayStartTime >= relayDuration) {
-    digitalWrite(PIN_CLOSE, LOW);
-    relayState = 0;
-  }
-}
-
 void IEC104Slave::sendIFrame(const byte* payload, byte len) {
   byte frame[6 + len];
   frame[0] = 0x68;
@@ -524,4 +581,12 @@ void IEC104Slave::sendUFormat(byte controlByte) {
   #endif
   
   delay(20);
+}
+
+void IEC104Slave::softwareReset() {
+  #ifdef DEBUG
+    Serial.println(F("⚠️  Tidak ada TESTFR_ACT >5 menit → hardware reset..."));
+  #endif
+  wdt_enable(WDTO_15MS); // Atur watchdog ke 15ms
+  while(1) {}            // Tunggu watchdog reset chip
 }
