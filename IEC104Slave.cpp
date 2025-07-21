@@ -40,33 +40,19 @@ void IEC104Slave::begin() {
   setupPins();
   restartModem();
   setupConnection();
+  flushModem(); 
   updateInputs();
-  lastTestAct = millis();
-  // sendUFormat(0x07);
+  lastFrameReceived = millis();
 }
 
 void IEC104Slave::run() {
-  updateRelay();
   updateInputs();
-  // Handle pending TI 46 ACK/Termination
-  if (cbBusy) {
-    // Cek apakah status CB sudah sesuai permintaan
-    bool cb_ok = false;
-    if (ti46_pending_ioa == 23000) cb_ok = (cb1 == ti46_pending_sco);
-    else if (ti46_pending_ioa == 23001) cb_ok = (cb2 == ti46_pending_sco);
-    // Sudah berubah atau timeout
-    if (cb_ok || (millis() - ti46_pending_start > ti46_timeout)) {
-      sendTI46AckAndTerm(ti46_pending_ioa, ti46_pending_sco);
-      cbBusy = false; // Reset, baru boleh eksekusi TI 46 baru
-    }
-    // Jika belum, jangan eksekusi command lain
-    // (bisa tambahkan antrian queue jika mau multi-command)
-  }
   checkCOS();
   listen();
-  // if (millis() - lastTestAct > TEST_ACT_TIMEOUT) {
-  //   softwareReset();
-  // }
+  handlePendingRelayTI46();
+  if (millis() - lastFrameReceived > TEST_ACT_TIMEOUT) {
+    softwareReset();
+  }
 }
 
 void IEC104Slave::setupPins() {
@@ -143,6 +129,7 @@ uint8_t IEC104Slave::getDoublePoint(uint8_t open, uint8_t close) {
 }
 
 void IEC104Slave::checkCOS() {
+  if (relayBusy) return;
   // Serial.println("[DEBUG] Memeriksa COS...");
   if (gfd != prevGFD) {
     #ifdef DEBUG
@@ -271,6 +258,7 @@ void IEC104Slave::handleModemText(String text) {
 } 
 
 void IEC104Slave::handleIFrame(const byte* buf, byte len) {
+  lastFrameReceived = millis();
   // Ambil NS dan NR dari frame yang diterima
   ns = (buf[3] << 7) | (buf[2] >> 1);
   nr = (buf[5] << 7) | (buf[4] >> 1);
@@ -302,6 +290,7 @@ void IEC104Slave::handleIFrame(const byte* buf, byte len) {
 }
 
 void IEC104Slave::handleSFrame(const byte* buf, byte len) {
+  lastFrameReceived = millis();
   nr = (buf[5] << 7) | (buf[4] >> 1);
   
   #ifdef DEBUG
@@ -318,7 +307,7 @@ void IEC104Slave::handleSFrame(const byte* buf, byte len) {
 }
 
 void IEC104Slave::handleUFrame(const byte* buf, byte len) {
-  
+  lastFrameReceived = millis();
   #ifdef DEBUG
   Serial.print("Master (U-Format):.    → ");
   for (int i = 0; i < len; i++) {
@@ -332,7 +321,6 @@ void IEC104Slave::handleUFrame(const byte* buf, byte len) {
     sendUFormat(0x0B);
   }
   else if (buf[2] == 0x43){
-    lastTestAct = millis();     // ← reset timer
     sendUFormat(0x83);
   }
 }
@@ -383,99 +371,86 @@ void IEC104Slave::handleTI46(const byte* d, byte len) {
   Serial.print("[TI46] IOA: "); Serial.print(ioa);
   Serial.print(" | SCO: "); Serial.println(sco);
   #endif
-
-  if (cbBusy) {
-    #ifdef DEBUG
-    Serial.println("[TI46] CB sedang proses. Abaikan atau simpan antrian TI46 berikutnya (satu per satu).");
-    #endif
-    // Optional: simpan antrian di variabel jika mau
+  
+  // Validasi remote & relay idle
+  bool isRemote = (ioa == 23000 && remote1) || (ioa == 23001 && remote2);
+  if (!isRemote) {
+    Serial.println("[TI46] Gagal eksekusi: Bukan remote!");
+    return;
+  }
+  if (relayBusy) {
+    Serial.println("[TI46] Gagal eksekusi: Relay masih aktif!");
     return;
   }
 
-  // Tidak ada eksekusi relay sedang aktif, proses sekarang
-  cbBusy = true;
+  // Simpan state pending
+  relayBusy = true;
   ti46_pending_ioa = ioa;
   ti46_pending_sco = sco;
-  ti46_pending_start = millis();
+  relayStart = millis();
+  cot7_sent = false;
 
-  // Eksekusi relay 800ms (pulse)
-  if (ioa == 23000) { // CB1
-    if (sco == 1) {
-      digitalWrite(PIN_CB1_OUT_OPEN, HIGH);
-      relayActiveCB1Open = true;
-      relayStartCB1Open = millis();
-    }
-    else if (sco == 2) {
-      digitalWrite(PIN_CB1_OUT_CLOSE, HIGH);
-      relayActiveCB1Close = true;
-      relayStartCB1Close = millis();
-    }
-  }
-  else if (ioa == 23001) { // CB2
-    if (sco == 1) {
-      digitalWrite(PIN_CB2_OUT_OPEN, HIGH);
-      relayActiveCB2Open = true;
-      relayStartCB2Open = millis();
-    }
-    else if (sco == 2) {
-      digitalWrite(PIN_CB2_OUT_CLOSE, HIGH);
-      relayActiveCB2Close = true;
-      relayStartCB2Close = millis();
-    }
+  // Trigger relay (ON), tidak pakai delay!
+  if (ioa == 23000) {
+    if (sco == 1) digitalWrite(PIN_CB1_OUT_OPEN, HIGH);
+    else if (sco == 2) digitalWrite(PIN_CB1_OUT_CLOSE, HIGH);
+  } else if (ioa == 23001) {
+    if (sco == 1) digitalWrite(PIN_CB2_OUT_OPEN, HIGH);
+    else if (sco == 2) digitalWrite(PIN_CB2_OUT_CLOSE, HIGH);
   }
 }
 
-void IEC104Slave::updateRelay() {
-  if (relayActiveCB1Open && millis() - relayStartCB1Open >= relayPulse) {
-    digitalWrite(PIN_CB1_OUT_OPEN, LOW);
-    relayActiveCB1Open = false;
+void IEC104Slave::handlePendingRelayTI46() {
+  if (!relayBusy) return;
+
+  // Matikan relay jika sudah >800 ms
+  if (millis() - relayStart > 800) {
+    if (ti46_pending_ioa == 23000) {
+      digitalWrite(PIN_CB1_OUT_OPEN, LOW);
+      digitalWrite(PIN_CB1_OUT_CLOSE, LOW);
+    }
+    if (ti46_pending_ioa == 23001) {
+      digitalWrite(PIN_CB2_OUT_OPEN, LOW);
+      digitalWrite(PIN_CB2_OUT_CLOSE, LOW);
+    }
   }
-  if (relayActiveCB1Close && millis() - relayStartCB1Close >= relayPulse) {
-    digitalWrite(PIN_CB1_OUT_CLOSE, LOW);
-    relayActiveCB1Close = false;
-  }
-  if (relayActiveCB2Open && millis() - relayStartCB2Open >= relayPulse) {
-    digitalWrite(PIN_CB2_OUT_OPEN, LOW);
-    relayActiveCB2Open = false;
-  }
-  if (relayActiveCB2Close && millis() - relayStartCB2Close >= relayPulse) {
-    digitalWrite(PIN_CB2_OUT_CLOSE, LOW);
-    relayActiveCB2Close = false;
+
+  // Cek status CB, kirim ke master bila sudah sesuai perintah
+  // updateInputs(); // pastikan status terupdate
+  bool cb_ok = false;
+  if (ti46_pending_ioa == 23000) cb_ok = (cb1 == ti46_pending_sco);
+  if (ti46_pending_ioa == 23001) cb_ok = (cb2 == ti46_pending_sco);
+
+  if (cb_ok && !cot7_sent) {
+    // 1. Kirim COT=7 (ACK)
+    byte ack[] = {
+      0x2E, 0x01, 0x07, 0x00, 0x01, 0x00,
+      (byte)(ti46_pending_ioa & 0xFF), (byte)((ti46_pending_ioa >> 8) & 0xFF), (byte)((ti46_pending_ioa >> 16) & 0xFF),
+      ti46_pending_sco
+    };
+    sendIFrame(ack, sizeof(ack)); delay(50);
+
+    // 2. Kirim TI 31 (status CB terbaru)
+    if (ti46_pending_ioa == 23000) sendTimestamped(31, 11000, cb1);
+    else if (ti46_pending_ioa == 23001) sendTimestamped(31, 11001, cb2);
+    delay(50);
+
+    // 3. Kirim Termination COT=10
+    byte term[] = {
+      0x2E, 0x01, 0x0A, 0x00, 0x01, 0x00,
+      (byte)(ti46_pending_ioa & 0xFF), (byte)((ti46_pending_ioa >> 8) & 0xFF), (byte)((ti46_pending_ioa >> 16) & 0xFF),
+      ti46_pending_sco
+    };
+    sendIFrame(term, sizeof(term)); delay(50);
+
+    cot7_sent = true;
+    relayBusy = false;
+
+    #ifdef DEBUG
+    Serial.println("TI 46 Termination - Selesai (event-driven)");
+    #endif
   }
 }
-
-void IEC104Slave::handleDoubleCommand(uint32_t ioa, uint8_t command) {
-  if (ioa == 23000) { // CB1
-    if (command == 1) digitalWrite(PIN_CB1_OUT_OPEN, HIGH);
-    if (command == 2) digitalWrite(PIN_CB1_OUT_CLOSE, HIGH);
-  }
-  if (ioa == 23001) { // CB2
-    if (command == 1) digitalWrite(PIN_CB2_OUT_OPEN, HIGH);
-    if (command == 2) digitalWrite(PIN_CB2_OUT_CLOSE, HIGH);
-  }
-}
-
-// Helper
-void IEC104Slave::sendTI46AckAndTerm(uint32_t ioa, byte sco) {
-  // ACK
-  byte ack[] = {
-    0x2E, 0x01, 0x07, 0x00, 0x01, 0x00,
-    (byte)(ioa & 0xFF), (byte)((ioa >> 8) & 0xFF), (byte)((ioa >> 16) & 0xFF),
-    sco
-  };
-  sendIFrame(ack, sizeof(ack)); delay(50);
-  // Termination
-  byte term[] = {
-    0x2E, 0x01, 0x0A, 0x00, 0x01, 0x00,
-    (byte)(ioa & 0xFF), (byte)((ioa >> 8) & 0xFF), (byte)((ioa >> 16) & 0xFF),
-    sco
-  };
-  sendIFrame(term, sizeof(term)); delay(50);
-  #ifdef DEBUG
-    Serial.println("TI 46 Termination - Selesai");
-  #endif
-}
-
 
 void IEC104Slave::handleRTC(const byte* buf, byte len) {
   const byte* time = &buf[15];
@@ -564,7 +539,7 @@ void IEC104Slave::sendIFrame(const byte* payload, byte len) {
   Serial.println();
   #endif
   txSeq++;
-  delay(20);
+  delay(50);
 }
 
 void IEC104Slave::sendUFormat(byte controlByte) {
@@ -580,13 +555,23 @@ void IEC104Slave::sendUFormat(byte controlByte) {
   Serial.println();
   #endif
   
-  delay(20);
+  delay(50);
 }
 
 void IEC104Slave::softwareReset() {
   #ifdef DEBUG
-    Serial.println(F("⚠️  Tidak ada TESTFR_ACT >5 menit → hardware reset..."));
+    Serial.println(F("⚠️  Tidak ada Komunikasi dari master >5 menit → hardware reset..."));
   #endif
   wdt_enable(WDTO_15MS); // Atur watchdog ke 15ms
   while(1) {}            // Tunggu watchdog reset chip
+}
+
+void IEC104Slave::flushModem() {
+  // Buang semua data yang belum terbaca di modem buffer
+  while (modem->available()) modem->read();
+  delay(100);
+  // Jika pakai Serial debug, buang juga
+  #ifdef DEBUG
+  while (Serial.available()) Serial.read();
+  #endif
 }

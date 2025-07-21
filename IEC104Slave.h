@@ -17,7 +17,7 @@
 
 #ifndef IEC104SLAVE_H
 #define IEC104SLAVE_H
-#define DEBUG
+// #define DEBUG
 
 #include <Arduino.h>
 #include <SoftwareSerial.h>
@@ -47,17 +47,14 @@ private:
   void sendIFrame(const byte* payload, byte len);
   void sendUFormat(byte controlByte);
   void convertCP56Time2a(uint8_t* buffer);
-  void triggerRelay(byte command);
-  void updateRelay();
   void updateSerial();
   void handleModemText(String text);
   void restartModem();
   void sendTI46AckAndTerm(uint32_t ioa, byte sco);
   uint8_t getDoublePoint(uint8_t open, uint8_t close);
-  void handleDoubleCommand(uint32_t ioa, uint8_t command);
-  void handleFrameTx();
-  void queueFrame(const byte* data, uint8_t len);
   void softwareReset();
+  void flushModem();
+  void handlePendingRelayTI46();
 
   DS3231 rtc = DS3231(SDA, SCL);
   Stream* modem = nullptr;
@@ -75,29 +72,11 @@ private:
   int connectionState = 0; // 0 = disconnected, 1 = waiting STARTDT, 2 = connected
 
   // --- Flag TI 46 ---
-  // true = sedang proses relay CB1/CB2
-  bool cbBusy = false;
+  bool relayBusy = false;
   uint32_t ti46_pending_ioa = 0;
   byte ti46_pending_sco = 0;
-  unsigned long ti46_pending_start = 0;
-  const unsigned long ti46_timeout = 8000;
-  unsigned long remote1ChangeStart = 0;
-  unsigned long remote2ChangeStart = 0;
-  bool remote1Stable = true;
-  bool remote2Stable = true;
-  uint8_t remote1LastSample = 0;
-  uint8_t remote2LastSample = 0;
-
-  // Relay pulse state (per CB)
-  bool relayActiveCB1Open = false;
-  bool relayActiveCB1Close = false;
-  bool relayActiveCB2Open = false;
-  bool relayActiveCB2Close = false;
-  unsigned long relayStartCB1Open = 0;
-  unsigned long relayStartCB1Close = 0;
-  unsigned long relayStartCB2Open = 0;
-  unsigned long relayStartCB2Close = 0;
-  const unsigned long relayPulse = 800; // 800 ms
+  unsigned long relayStart = 0;
+  bool cot7_sent = false;
 
   uint8_t modemRestartStep = 0;
   unsigned long modemRestartTime = 0;
@@ -121,14 +100,8 @@ private:
 
   static const int MAX_BUFFER = 64;
 
-  unsigned long lastFrameSent = 0;
-  const unsigned long minFrameInterval = 20; // ms
-  bool framePending = false;
-  uint8_t frameBuffer[64]; // buffer untuk simpan frame, sesuaikan ukuran
-  uint8_t frameLength = 0;
-
-  const unsigned long TEST_ACT_TIMEOUT = 300000UL; // Waktu maksimal tanpa TESTFR_ACT = 5 menit
-  unsigned long lastTestAct = 0;
+  const unsigned long TEST_ACT_TIMEOUT = 5UL * 60UL * 1000UL; // Waktu maksimal tanpa TESTFR_ACT = 5 menit
+  unsigned long lastFrameReceived = 0;
 };
 
 #endif
