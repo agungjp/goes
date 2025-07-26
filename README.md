@@ -1,4 +1,3 @@
-
 ## 👤 AUTHOR & LICENSE
 
 - **Author** : Mr. Pegagan  
@@ -9,12 +8,13 @@
 
 # 📡 IEC 60870-5-104 Arduino Slave – v1.6.2
 
-## 📑 CHANGELOG RINGKAS
-	# 26072025
-	•	Menambahkan changelog ringkas
-	# 23072025
-	•	1.6.2 debounce remote, ganti delay jadi anti block 
+## 📑 CHANGELOG
+
+### v1.6.2 (23/07/2025)
+- Debounce remote
+- Ganti delay jadi anti block
+
+### v1.6.1 (xx/xx/xxxx)
+- Initial release
 
 ---
-
-
