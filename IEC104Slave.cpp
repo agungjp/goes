@@ -1,5 +1,5 @@
 /*=============================================================================|
-|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.6.1  |
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.6.2  |
 |==============================================================================|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
@@ -18,7 +18,19 @@
 #include "IEC104Slave.h"
 #include <string.h>
 
-IEC104Slave::IEC104Slave(Stream* serial) {
+IEC104Slave::IEC104Slave(Stream* serial) : 
+    remote1(false), prevRemote1(false),
+    remote2(false), prevRemote2(false),
+    gfd(false), prevGFD(false),
+    supply(false), prevSupply(false),
+    cb1(0), prevCB1(0),
+    cb2(0), prevCB2(0),
+    remote1Stable(false), remote2Stable(false),
+    remote1DebounceActive(false), remote2DebounceActive(false),
+    remote1DebounceStart(0), remote2DebounceStart(0),
+    lastFrameReceived(0),
+    state(STATE_DISCONNECTED) 
+{
   modem = serial;
 }
 
@@ -43,11 +55,21 @@ void IEC104Slave::begin() {
   flushModem(); 
   updateInputs();
   lastFrameReceived = millis();
+  prevRemote1 = remote1;
+  prevRemote2 = remote2;
+  prevGFD     = gfd;
+  prevSupply  = supply;
+  prevCB1     = cb1;
+  prevCB2     = cb2;
+  remote1Stable = remote1;
+  remote2Stable = remote2;
 }
 
 void IEC104Slave::run() {
   updateInputs();
-  checkCOS();
+  if (state == STATE_CONNECTED){
+    checkCOS();
+  } 
   listen();
   handlePendingRelayTI46();
   if (millis() - lastFrameReceived > TEST_ACT_TIMEOUT) {
@@ -108,9 +130,35 @@ void IEC104Slave::updateInputs() {
   prevCB1     = cb1;
   prevCB2     = cb2;
 
-  remote1 = digitalRead(PIN_REMOTE1) == LOW;// IOA 1001
+  bool rawRemote1 = digitalRead(PIN_REMOTE1) == LOW; // IOA 1001
+  if (rawRemote1 != remote1Stable) {
+    remote1DebounceStart = millis();
+    remote1DebounceActive = true;
+    remote1Stable = rawRemote1;
+  }
+  if (remote1DebounceActive && (millis() - remote1DebounceStart >= 1500)) {
+    remote1 = remote1Stable;
+    remote1DebounceActive = false;
+    if (!remote1DebounceReady) {
+      prevRemote1 = remote1;       // Samakan agar tidak trigger COS pertama kali
+      remote1DebounceReady = true; // Arming, berikutnya normal
+    }
+  }
+  bool rawRemote2 = digitalRead(PIN_REMOTE2) == LOW; // IOA 1003
+  if (rawRemote2 != remote2Stable) {
+    remote2DebounceStart = millis();
+    remote2DebounceActive = true;
+    remote2Stable = rawRemote2;
+  }
+  if (remote2DebounceActive && (millis() - remote2DebounceStart >= 1500)) {
+    remote2 = remote2Stable;
+    remote2DebounceActive = false;
+    if (!remote2DebounceReady) {
+      prevRemote2 = remote2;
+      remote2DebounceReady = true;
+    }
+  }
   gfd = digitalRead(PIN_GFD) == LOW;         // IOA 1002
-  remote2 = digitalRead(PIN_REMOTE2) == LOW; // IOA 1003
   supply = digitalRead(PIN_SUPPLY);   // IOA 1004
   bool cb1_open  = digitalRead(PIN_CB1_OPEN);
   bool cb1_close = digitalRead(PIN_CB1_CLOSE);
@@ -125,7 +173,7 @@ uint8_t IEC104Slave::getDoublePoint(uint8_t open, uint8_t close) {
   if (!open && !close) return 0; // Unknown
   else if (!open && close) return 1; // Open
   else if (open && !close) return 2; // Close
-  else return 0; // Unknown
+  else return 3; // Unknown
 }
 
 void IEC104Slave::checkCOS() {
@@ -181,7 +229,7 @@ void IEC104Slave::listen() {
   static byte buf[MAX_BUFFER];
   static String modemText = "";
   int len = 0;
-
+  
   while (modem->available()) {
     char c = modem->read();
 
@@ -200,16 +248,44 @@ void IEC104Slave::listen() {
     // Frame IEC 104 diawali 0x68
     if ((byte)c == 0x68) {
       buf[0] = 0x68;
-      while (modem->available() < 1);  // tunggu 1 byte
+      unsigned long tStart = millis();
+      while (modem->available() < 1) {
+        if (millis() - tStart > 200) {
+          // Timeout: frame gagal, lanjut
+          #ifdef DEBUG
+          Serial.println("[TIMEOUT] Wait length byte");
+          #endif
+          return;
+        }
+      }
       byte length = modem->read();
       buf[1] = length;
 
       // overflow guard
       if (length > MAX_BUFFER - 2) return;
 
+      bool timeout = false;
       for (int i = 0; i < length; i++) {
-        while (!modem->available());
+        unsigned long t1 = millis();
+        while (!modem->available()) {
+          if (millis() - t1 > 200) {
+            timeout = true;
+            #ifdef DEBUG
+            Serial.print("[TIMEOUT] Wait data byte ke-"); Serial.println(i);
+            #endif
+            break;
+          }
+        }
+        if (timeout) break; // keluar dari for loop jika timeout
         buf[2 + i] = modem->read();
+      }
+
+      if (timeout) {
+        // Jika timeout saat baca data frame, frame dibuang
+        #ifdef DEBUG
+        Serial.println("[TIMEOUT] Frame IEC104 tidak lengkap, dibuang!");
+        #endif
+        continue;
       }
 
       len = length + 2;
@@ -319,6 +395,7 @@ void IEC104Slave::handleUFrame(const byte* buf, byte len) {
 
   if (buf[2] == 0x07){
     sendUFormat(0x0B);
+    state = STATE_CONNECTED;
   }
   else if (buf[2] == 0x43){
     sendUFormat(0x83);

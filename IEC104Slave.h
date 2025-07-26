@@ -1,5 +1,5 @@
 /*=============================================================================|
-|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.6.1  |
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.6.2  |
 |==============================================================================|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
@@ -29,6 +29,7 @@ public:
   IEC104Slave(Stream* serial);
   void begin();
   void run();
+  
 
 private:
   void handleRTC(const byte* buf, byte len);
@@ -102,6 +103,18 @@ private:
 
   const unsigned long TEST_ACT_TIMEOUT = 5UL * 60UL * 1000UL; // Waktu maksimal tanpa TESTFR_ACT = 5 menit
   unsigned long lastFrameReceived = 0;
+
+  enum IEC104State { STATE_DISCONNECTED, STATE_WAIT_STARTDT, STATE_CONNECTED };
+  IEC104State state = STATE_DISCONNECTED;
+
+  // Debounce remote1 & remote2
+  bool remote1Stable, remote2Stable;
+  unsigned long remote1DebounceStart;
+  unsigned long remote2DebounceStart;
+  bool remote1DebounceActive;
+  bool remote2DebounceActive;
+  bool remote1DebounceReady = false;
+  bool remote2DebounceReady = false;
 };
 
 #endif

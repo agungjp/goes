@@ -1,5 +1,5 @@
 /*=============================================================================|
-|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.6.1  |
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.6.2  |
 |==============================================================================|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
@@ -26,7 +26,7 @@ void setup() {
   Serial.begin(115200); //debug
   modem.begin(9600);
   #ifdef DEBUG
-  Serial.println(F("GOES - IEC 60870-5-104 Slave v1.6.1"));
+  Serial.println(F("GOES - IEC 60870-5-104 Slave v1.6.2"));
   #endif
   slave.begin();
   wdt_enable(WDTO_8S);  
