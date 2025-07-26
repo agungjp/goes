@@ -1,3 +1,4 @@
+
 ## 👤 AUTHOR & LICENSE
 
 - **Author** : Mr. Pegagan  
@@ -10,11 +11,15 @@
 
 ## 📑 CHANGELOG
 
-### v1.6.2 (23/07/2025)
-- Debounce remote
-- Ganti delay jadi anti block
+### v1.6.2 (26/07/2025)
+- Add debouncing for remote inputs.
+- Replace blocking `delay()` with non-blocking `millis()` for modem reading.
 
-### v1.6.1 (xx/xx/xxxx)
-- Initial release
+### v1.6.1 (20/07/2025)
+- Refactored to support a second Circuit Breaker (CB).
+- Updated pin definitions, COS logic, and double command handling.
+
+### v1.6.0 (12/07/2025)
+- Enabled `DEBUG` mode.
 
 ---
