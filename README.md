@@ -10,6 +10,8 @@
 # 📡 IEC 60870-5-104 Arduino Slave – v1.6.2
 
 ## 📑 CHANGELOG RINGKAS
+	# 26072025
+	•	Menambahkan changelog ringkas
 	# 23072025
 	•	1.6.2 debounce remote, ganti delay jadi anti block 
 
