@@ -2,7 +2,7 @@
 
 - **Author** : Mr. Pegagan  
 - **Email**  : agungjulianperkasa@gmail.com  
-- **License**: GNU Lesser General Public License v3.0
+- **License**: MIT License
 
 ---
 
