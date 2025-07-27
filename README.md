@@ -8,6 +8,8 @@
 
 # 📡 IEC 60870-5-104 Arduino Slave – v1.6.2
 
+*Ini adalah cabang `develop`.*
+
 ## 📑 CHANGELOG
 
 ### v1.6.2 (26/07/2025)
