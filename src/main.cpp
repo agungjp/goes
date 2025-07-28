@@ -16,7 +16,7 @@
 |==============================================================================*/
 
 #include <SoftwareSerial.h>
-#include "IEC104Slave.h"
+// #include "IEC104Slave.h"
 #include <avr/wdt.h>    // untuk hardware reset penuh
 
 SoftwareSerial modem(10, 8);           // TX=10 → RX_modem, RX=8 ← TX_modem
