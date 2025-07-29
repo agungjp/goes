@@ -9,12 +9,12 @@
             "name": "PlatformIO",
             "includePath": [
                 "/Users/agungperkasa/Documents/[02] Dev/GOES/goes/src",
-                "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
                 "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/cores/arduino",
                 "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/variants/standard",
                 "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
                 "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/libraries/HID/src",
                 "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
                 "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
                 ""
             ],
@@ -22,12 +22,12 @@
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
                     "/Users/agungperkasa/Documents/[02] Dev/GOES/goes/src",
-                    "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
                     "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/cores/arduino",
                     "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/variants/standard",
                     "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
                     "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/libraries/HID/src",
                     "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                    "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
                     "/Users/agungperkasa/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
                     ""
                 ]
