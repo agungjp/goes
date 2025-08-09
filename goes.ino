@@ -1,5 +1,5 @@
 /*=============================================================================|
-|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.6.2  |
+|  PROJECT GOES dua - IEC 60870-5-104 Arduino Slave                        v1.0  |
 |==============================================================================|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
@@ -19,21 +19,20 @@
 #include "IEC104Slave.h"
 #include <avr/wdt.h>    // untuk hardware reset penuh
 
-SoftwareSerial modem(10, 8);           // TX=10 → RX_modem, RX=8 ← TX_modem
+SoftwareSerial modem(9, 8);           // TX=10 → RX_modem, RX=8 ← TX_modem
 IEC104Slave slave(&modem);             // Konstruktor pakai Stream*
 
 void setup() {
   Serial.begin(115200); //debug
   modem.begin(9600);
+  pinMode(LED_BUILTIN, OUTPUT);
   #ifdef DEBUG
-  Serial.println(F("GOES - IEC 60870-5-104 Slave v1.6.2"));
+  Serial.println(F("GOES dua - IEC 60870-5-104 Slave v1.0"));
   #endif
   slave.begin();
   wdt_enable(WDTO_8S);  
 }
 
 void loop() {
-  // digitalWrite(LED_BUILTIN, millis() % 1000 < 100);
   slave.run();
-  wdt_reset();
 }
