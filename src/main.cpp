@@ -1,39 +1,81 @@
 /*=============================================================================|
-|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.6.2  |
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.9.0  |
 |==============================================================================|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
 |==============================================================================|
-|  IEC 60870-5-104 Arduino Slave is free software: you can redistribute it     |
-|  and/or modify it under the terms of the Lesser GNU General Public License   |
-|  as published by the Free Software Foundation, either version 3 of the       |
-|  License, or (at your option) any later version.                             |
-|                                                                              |
-|  This program is distributed in the hope that it will be useful,             |
-|  but WITHOUT ANY WARRANTY; without even the implied warranty of              |
-|  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                        |
-|  See the Lesser GNU General Public License for more details.                 |
+|  This program is free software and is distributed under the terms of the     |
+|  Lesser GNU General Public License. See the LICENSE file for details.        |
 |==============================================================================*/
 
-#include "IEC104Slave.h"
-#include <esp_task_wdt.h> // untuk hardware reset penuh
+#include <Arduino.h>
+#include "goes_config.h" // Master configuration file
 
-IEC104Slave slave(&Serial1);             // Konstruktor pakai Stream*
+#include "hal/HardwareManager.h"
+#include "comm/CommInterface.h"
+#include "comm/IEC104Communicator.h"
+#include "core/IEC104Core.h"
+
+// --- Include all possible communication modules ---
+#if defined(USE_MODEM_SIM800L) || defined(USE_MODEM_SIM7600CE) || defined(USE_MODEM_QUECTEL_EC25)
+#include "comm/ModemCommunicator.h"
+#elif defined(USE_ETHERNET)
+#include "comm/CommEthernet.h"
+#endif
+
+// --- Conditionally instantiate SoftwareSerial for AVR boards ---
+#if defined(BOARD_ATMEGA328P)
+#include <SoftwareSerial.h>
+SoftwareSerial modemSerial(MODEM_SERIAL_RX_PIN, MODEM_SERIAL_TX_PIN);
+#endif
+
+// --- Global Pointers for Core Components ---
+// These pointers will hold the instances of our core components.
+// They are initialized in setup() based on hardware configuration.
+HardwareManager* hardwareManager = nullptr;
+CommInterface* comm = nullptr;
+IEC104Communicator* iec104Communicator = nullptr;
+IEC104Core* iec104Core = nullptr;
+
+// Ethernet configuration definitions (defined once here)
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+IPAddress ip(192, 168, 1, 177);
 
 void setup() {
-  Serial.begin(115200); //debug
+  // Initialize Serial ports first
+#if defined(BOARD_ESP32)
+  Serial.begin(115200);
   Serial1.begin(9600);
-  Wire.begin();
-  #ifdef DEBUG
-  Serial.println(F("GOES - IEC 60870-5-104 Slave v1.6.2"));
-  #endif
-  slave.begin();
-  esp_task_wdt_init(8, true); // 8 detik timeout, true untuk mengaktifkan reset
-  esp_task_wdt_add(NULL);     // Tambahkan task saat ini ke watchdog
+#elif defined(BOARD_ATMEGA328P)
+  Serial.begin(115200);
+  modemSerial.begin(9600);
+#endif
+
+  // 1. Initialize Hardware Abstraction Layer
+  hardwareManager = new HardwareManager();
+  hardwareManager->init(); // Handles I2C, Watchdog, and Pins
+
+  // 2. Communication Module Factory
+  // Select the communication module based on flags in goes_config.h
+#if defined(USE_MODEM_SIM800L) || defined(USE_MODEM_SIM7600CE) || defined(USE_MODEM_QUECTEL_EC25)
+  comm = new ModemCommunicator(&MODEM_SERIAL, hardwareManager);
+#elif defined(USE_ETHERNET)
+  comm = new CommEthernet(mac, ip, ETHERNET_PORT);
+#else
+  #error "No communication module selected in goes_config.h"
+#endif
+
+  // 3. Initialize Communication and Core Logic
+  comm->setupConnection();
+  comm->restart();
+  comm->flush();
+
+  iec104Communicator = new IEC104Communicator(comm);
+  iec104Core = new IEC104Core(iec104Communicator, hardwareManager);
 }
 
 void loop() {
-  // digitalWrite(LED_BUILTIN, millis() % 1000 < 100);
-  slave.run();
-  esp_task_wdt_reset();
+  hardwareManager->updateHeartbeatLED(); // This also resets the watchdog
+  iec104Communicator->listen();
+  iec104Core->run();
 }
