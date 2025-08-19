@@ -27,6 +27,7 @@ void ModemCommunicator::setupConnection() {
   _modem->println("AT"); updateSerial(); delay(1000);
   _modem->println("AT+CSQ"); updateSerial();
   _modem->println("AT+CPSI?"); updateSerial(); // Check network registration
+  _modem->println("AT+CSTT=\"m2mplnapd\""); updateSerial(); // Set APN
   _modem->println("AT+NETOPEN"); updateSerial(); delay(3000); // Open network
   _modem->println("AT+IPADDR"); updateSerial(); // Show IP address
   _modem->println("AT+CIPSERVER=1,2404"); updateSerial(); // Start TCP server
