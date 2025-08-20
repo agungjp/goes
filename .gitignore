@@ -1,6 +1,8 @@
-node_modules
-.gemini/
-GEMINI.md
-/.pio/
+# PlatformIO build artifacts
+.pio/
+
+# macOS
 .DS_Store
-/.vscode/
+
+# Logs
+*.log
