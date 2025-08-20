@@ -1,5 +1,5 @@
 /*=============================================================================|
-|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.9.0  |
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v2.0.0  |
 |==================================================================ok ============|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
