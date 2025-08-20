@@ -1,5 +1,5 @@
 /*=============================================================================|
-|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.6.2  |
+|  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        goes-tiga  |
 |==============================================================================|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
@@ -25,11 +25,11 @@ IEC104Slave::IEC104Slave(Stream* serial) :
     supply(false), prevSupply(false),
     cb1(0), prevCB1(0),
     cb2(0), prevCB2(0),
-    remote1Stable(false), remote2Stable(false),
-    remote1DebounceActive(false), remote2DebounceActive(false),
-    remote1DebounceStart(0), remote2DebounceStart(0),
     lastFrameReceived(0),
-    state(STATE_DISCONNECTED) 
+    state(STATE_DISCONNECTED),
+    remote1Stable(false), remote2Stable(false),
+    remote1DebounceStart(0), remote2DebounceStart(0),
+    remote1DebounceActive(false), remote2DebounceActive(false) 
 {
   modem = serial;
 }
@@ -48,7 +48,7 @@ void IEC104Slave::setupConnection() {
 }
 
 void IEC104Slave::begin() {
-  rtc.begin();
+  Wire.begin();
   setupPins();
   restartModem();
   setupConnection();
@@ -416,13 +416,13 @@ void IEC104Slave::handleGI(const byte* buf, byte len) {
   byte ti1[] = {
     0x01, 0x04, 0x14, 0x00, ca_lo, ca_hi,
     // Remote/Local cell 1 (IOA 1001)
-    0xE9, 0x03, 0x00, remote1 ? 0 : 1,
+    0xE9, 0x03, 0x00, (byte)(remote1 ? 0 : 1),
     // GFD (IOA 1002)
-    0xEA, 0x03, 0x00, gfd ? 1 : 0,
+    0xEA, 0x03, 0x00, (byte)(gfd ? 1 : 0),
     // Remote/Local cell 2 (IOA 1003)
-    0xEB, 0x03, 0x00, remote2 ? 0 : 1,
+    0xEB, 0x03, 0x00, (byte)(remote2 ? 0 : 1),
     // Supply (IOA 1004)
-    0xEC, 0x03, 0x00, supply ? 1 : 0
+    0xEC, 0x03, 0x00, (byte)(supply ? 1 : 0)
   };
   sendIFrame(ti1, sizeof(ti1)); delay(50);
 
@@ -441,7 +441,7 @@ void IEC104Slave::handleGI(const byte* buf, byte len) {
 }
 
 void IEC104Slave::handleTI46(const byte* d, byte len) {
-  uint32_t ioa = d[6] | (d[7] << 8) | (d[8] << 16);
+  uint32_t ioa = d[6] | (d[7] << 8) | ((uint32_t)d[8] << 16);
   byte sco = d[9] & 0x03;
 
   #ifdef DEBUG
@@ -571,21 +571,32 @@ void IEC104Slave::setRTCFromCP56(const byte* time) {
   Serial.print(" (DOW: "); Serial.print(dow); Serial.println(")");
   #endif
 
-  rtc.setDOW(dow);
-  rtc.setDate(date, month, year);
-  rtc.setTime(hour, minute, ms / 1000);
+  rtc.setDoW(dow);
+  rtc.setDate(date);
+  rtc.setMonth(month);
+  rtc.setYear(year % 100);
+  rtc.setHour(hour);
+  rtc.setMinute(minute);
+  rtc.setSecond(ms / 1000);
 }
 
 void IEC104Slave::convertCP56Time2a(uint8_t* buffer) {
-  Time t = rtc.getTime();
-  uint16_t ms = t.sec * 1000;
+  bool h12, PM_time;
+  byte second = rtc.getSecond();
+  byte minute = rtc.getMinute();
+  byte hour = rtc.getHour(h12, PM_time);
+  byte date = rtc.getDate();
+  byte dow = rtc.getDoW();
+  byte month = rtc.getMonth(h12);
+  byte year = rtc.getYear();
+  uint16_t ms = second * 1000;
   buffer[0] = ms & 0xFF;
   buffer[1] = (ms >> 8) & 0xFF;
-  buffer[2] = t.min & 0x3F;
-  buffer[3] = t.hour & 0x1F;
-  buffer[4] = ((t.dow & 0x07) << 5) | (t.date & 0x1F);
-  buffer[5] = t.mon & 0x0F;
-  buffer[6] = (t.year - 2000) & 0x7F;
+  buffer[2] = minute & 0x3F;
+  buffer[3] = hour & 0x1F;
+  buffer[4] = ((dow & 0x07) << 5) | (date & 0x1F);
+  buffer[5] = month & 0x0F;
+  buffer[6] = year & 0x7F;
 }
 
 void IEC104Slave::sendTimestamped(byte ti, uint16_t ioa, byte value) {

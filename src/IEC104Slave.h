@@ -17,12 +17,13 @@
 
 #ifndef IEC104SLAVE_H
 #define IEC104SLAVE_H
-// #define DEBUG
+#define DEBUG
 
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include <DS3231.h>
-#include <avr/wdt.h>    // untuk kontrol Watchdog Timer
+#include <Wire.h>
+#include <avr/wdt.h>    // untuk kontrol Watchdog Timer (AVR only)
 
 class IEC104Slave {
 public:
@@ -57,7 +58,7 @@ private:
   void flushModem();
   void handlePendingRelayTI46();
 
-  DS3231 rtc = DS3231(SDA, SCL);
+  DS3231 rtc = DS3231(Wire);
   Stream* modem = nullptr;
 
   uint16_t txSeq = 0, rxSeq = 0;
