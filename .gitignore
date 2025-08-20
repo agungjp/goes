@@ -3,3 +3,4 @@ node_modules
 GEMINI.md
 /.pio/
 .DS_Store
+/.vscode/
