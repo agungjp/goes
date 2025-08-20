@@ -1,6 +1,6 @@
 /*=============================================================================|
 |  PROJECT GOES - IEC 60870-5-104 Arduino Slave                        v1.9.0  |
-|==============================================================================|
+|==================================================================ok ============|
 |  Copyright (C) 2024-2025 Mr. Pegagan (agungjulianperkasa@gmail.com)         |
 |  All rights reserved.                                                        |
 |==============================================================================|
@@ -9,12 +9,13 @@
 |==============================================================================*/
 
 #include <Arduino.h>
+#ifndef UNIT_TEST
 #include "config/goes_config.h" // Master configuration file
 
 #include "hal/HardwareManager.h"
 #include "comm/CommInterface.h"
-#include "comm/IEC104Communicator.h"
-#include "core/IEC104Core.h"
+#include "iec104/transport/IEC104Communicator.h"
+#include "iec104/core/IEC104Core.h"
 
 // --- Include all possible communication modules ---
 #if defined(USE_MODEM_SIM800L) || defined(USE_MODEM_SIM7600CE) || defined(USE_MODEM_QUECTEL_EC25)
@@ -23,11 +24,7 @@
 #include "comm/CommEthernet.h"
 #endif
 
-// --- Conditionally instantiate SoftwareSerial for AVR boards ---
-#if defined(BOARD_ATMEGA328P)
-#include <SoftwareSerial.h>
-SoftwareSerial modemSerial(MODEM_SERIAL_RX_PIN, MODEM_SERIAL_TX_PIN);
-#endif
+
 
 // --- Global Pointers for Core Components ---
 // These pointers will hold the instances of our core components.
@@ -37,9 +34,7 @@ CommInterface* comm = nullptr;
 IEC104Communicator* iec104Communicator = nullptr;
 IEC104Core* iec104Core = nullptr;
 
-// Ethernet configuration definitions (defined once here)
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress ip(192, 168, 1, 177);
+ 
 
 void setup() {
   // Initialize Serial ports first
@@ -70,6 +65,14 @@ void setup() {
 
   iec104Communicator = new IEC104Communicator(comm);
   iec104Core = new IEC104Core(iec104Communicator, hardwareManager);
+
+  // Forward I-frames to core logic
+  iec104Communicator->setFrameHandler(
+    [](void* ctx, const byte* buf, byte len){
+      static_cast<IEC104Core*>(ctx)->processReceivedFrame(buf, len);
+    },
+    iec104Core
+  );
 }
 
 void loop() {
@@ -77,3 +80,5 @@ void loop() {
   iec104Communicator->listen();
   iec104Core->run();
 }
+
+#endif // UNIT_TEST

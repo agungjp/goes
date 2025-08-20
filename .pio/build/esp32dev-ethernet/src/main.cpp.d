@@ -133,16 +133,17 @@
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/esp32/spiram.h \
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/cores/esp32/io_pin_remap.h \
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
- src/goes_config.h src/config/board_esp32.h src/hal/HardwareManager.h \
- src/hal/PinInterface.h \
+ src/config/goes_config.h src/config/board_esp32.h \
+ src/hal/HardwareManager.h src/hal/PinInterface.h \
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/cores/esp32/HardwareSerial.h \
- src/comm/CommInterface.h src/comm/IEC104Communicator.h \
+ src/comm/CommInterface.h src/iec104/transport/IEC104Communicator.h \
  src/comm/CommInterface.h src/config/config_global.h \
- src/core/IEC104Core.h .pio/libdeps/esp32dev-ethernet/DS3231/DS3231.h \
+ src/iec104/core/IEC104Core.h \
+ .pio/libdeps/esp32dev-ethernet/DS3231/DS3231.h \
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src/Wire.h \
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \
- src/comm/IEC104Communicator.h src/hal/HardwareManager.h \
- src/config/config_ioa.h src/comm/CommEthernet.h \
+ src/iec104/transport/IEC104Communicator.h src/hal/HardwareManager.h \
+ src/config/config_ioa.h src/comm/CommEthernet.h src/comm/CommInterface.h \
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src/WiFi.h \
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/cores/esp32/Print.h \
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/cores/esp32/IPv6Address.h \

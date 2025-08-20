@@ -138,6 +138,5 @@
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src/Wire.h \
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \
- src/goes_config.h src/config/board_esp32.h src/hal/PinESP32.h \
- src/hal/PinAVR.h \
+ src/config/goes_config.h src/config/board_esp32.h src/hal/PinESP32.h \
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_system/include/esp_task_wdt.h

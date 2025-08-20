@@ -33,21 +33,18 @@
 //==============================================================================
 // 2. MODEM/COMMUNICATION SELECTION
 //==============================================================================
-// The communication module is now selected via build flags in platformio.ini.
-// See the different `[env:esp32dev-*]` environments.
-
-#define USE_MODEM_SIM800L
-// #define USE_MODEM_SIM7600CE
-// #define USE_MODEM_QUECTEL_EC25
-// #define USE_ETHERNET
+// The communication module is selected via build flags in platformio.ini.
+// Do not define USE_MODEM_* or USE_ETHERNET here. See `[env:esp32dev-*]`.
 
 
 //==============================================================================
 // 3. ETHERNET CONFIGURATION (only used if USE_ETHERNET is enabled)
 //==============================================================================
-extern byte mac[];
-extern IPAddress ip;
-#define ETHERNET_PORT 2404
+#if defined(USE_ETHERNET)
+  static byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+  static IPAddress ip(192, 168, 1, 177);
+  #define ETHERNET_PORT 2404
+#endif
 
 
 //==============================================================================

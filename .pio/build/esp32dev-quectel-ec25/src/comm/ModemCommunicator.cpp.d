@@ -137,4 +137,4 @@
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/esp32/spiram.h \
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/cores/esp32/io_pin_remap.h \
  /Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
- src/goes_config.h src/config/board_esp32.h src/hal/PinESP32.h
+ src/config/goes_config.h src/config/board_esp32.h src/hal/PinESP32.h
