@@ -1,11 +1,11 @@
 #include "HardwareManager.h"
 #include <Arduino.h>
 #include <Wire.h>
-#include "goes_config.h"
+#include "config/goes_config.h"
 
 // Include all possible pin drivers
 #include "PinESP32.h"
-#include "PinAVR.h"
+
 
 // Include platform-specific headers for watchdog, etc.
 #if defined(BOARD_ESP32)
@@ -32,6 +32,7 @@ HardwareManager::~HardwareManager() {
 }
 
 void HardwareManager::init() {
+    Wire.begin(); // Initialize I2C bus
     // Initialize platform-specific watchdog
 #if defined(BOARD_ESP32)
     esp_task_wdt_init(8, true); // 8-second timeout, enable panic reset
@@ -68,10 +69,7 @@ void HardwareManager::resetWatchdog() {
 void HardwareManager::softwareReset() {
 #if defined(BOARD_ESP32)
     ESP.restart();
-#elif defined(BOARD_ATMEGA328P)
-    // For AVR, a software reset can be triggered by enabling and then immediately resetting the watchdog
-    wdt_enable(WDTO_15MS);
-    while(1); // Wait for watchdog to reset
+
 #else
     // Fallback for unsupported boards
     // You might want to add a Serial.println("Software reset not supported on this board.");

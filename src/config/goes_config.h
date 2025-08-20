@@ -36,7 +36,7 @@
 // The communication module is now selected via build flags in platformio.ini.
 // See the different `[env:esp32dev-*]` environments.
 
-// #define USE_MODEM_SIM800L
+#define USE_MODEM_SIM800L
 // #define USE_MODEM_SIM7600CE
 // #define USE_MODEM_QUECTEL_EC25
 // #define USE_ETHERNET
@@ -59,13 +59,7 @@ extern IPAddress ip;
 #if defined(BOARD_ESP32)
   #define DEBUG_SERIAL Serial
   #define MODEM_SERIAL Serial1
-#elif defined(BOARD_ATMEGA328P)
-  // For ATmega328P (like Arduino Uno), hardware serial is used for debugging.
-  // We need SoftwareSerial for the modem. User must define pins.
-  #define MODEM_SERIAL_RX_PIN 10 
-  #define MODEM_SERIAL_TX_PIN 11
-  #define DEBUG_SERIAL Serial
-  #define MODEM_SERIAL modemSerial
+
 #endif
 
 

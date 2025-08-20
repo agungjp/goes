@@ -1,5 +1,5 @@
 #include "ModemCommunicator.h"
-#include "goes_config.h"
+#include "config/goes_config.h"
 #include "hal/HardwareManager.h" // For PIN_MODEM_POWER
 #include "hal/PinESP32.h" // Direct include for pin definitions
 #include <Arduino.h> // For Serial, millis, delay, String

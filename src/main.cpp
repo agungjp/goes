@@ -9,7 +9,7 @@
 |==============================================================================*/
 
 #include <Arduino.h>
-#include "goes_config.h" // Master configuration file
+#include "config/goes_config.h" // Master configuration file
 
 #include "hal/HardwareManager.h"
 #include "comm/CommInterface.h"
@@ -46,9 +46,7 @@ void setup() {
 #if defined(BOARD_ESP32)
   Serial.begin(115200);
   Serial1.begin(9600);
-#elif defined(BOARD_ATMEGA328P)
-  Serial.begin(115200);
-  modemSerial.begin(9600);
+
 #endif
 
   // 1. Initialize Hardware Abstraction Layer

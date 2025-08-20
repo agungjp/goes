@@ -1,11 +1,26 @@
 #include "IEC104Core.h"
-#include "goes_config.h"
+#include "config/goes_config.h"
 #include "config/config_global.h" // For TEST_ACT_TIMEOUT
 #include "hal/HardwareManager.h" // For HardwareManager
 #include "hal/PinESP32.h" // Direct include for pin definitions
 
 IEC104Core::IEC104Core(IEC104Communicator* comm, HardwareManager* hw) : _comm(comm), _hw(hw) {
     // Constructor
+    #ifdef DEBUG
+    Serial.print("RTC initialized. Current time: ");
+    Serial.print(rtc.getYear() + 2000);
+    Serial.print('/');
+    Serial.print(rtc.getMonth());
+    Serial.print('/');
+    Serial.print(rtc.getDate());
+    Serial.print(" ");
+    Serial.print(rtc.getHour(true)); // true for 24-hour format
+    Serial.print(':');
+    Serial.print(rtc.getMinute());
+    Serial.print(':');
+    Serial.print(rtc.getSecond());
+    Serial.println();
+    #endif
 }
 
 void IEC104Core::run() {
@@ -19,6 +34,26 @@ void IEC104Core::run() {
     if (millis() - _comm->getLastFrameReceived() > TEST_ACT_TIMEOUT) { // Need to expose getLastFrameReceived from IEC104Communicator
         softwareReset();
     }
+
+    #ifdef DEBUG
+    static unsigned long lastRtcPrint = 0;
+    if (millis() - lastRtcPrint > 5000) { // Print every 5 seconds
+        Serial.print("RTC Time: ");
+        Serial.print(rtc.getYear() + 2000);
+        Serial.print('/');
+        Serial.print(rtc.getMonth());
+        Serial.print('/');
+        Serial.print(rtc.getDate());
+        Serial.print(" ");
+        Serial.print(rtc.getHour(true)); // true for 24-hour format
+        Serial.print(':');
+        Serial.print(rtc.getMinute());
+        Serial.print(':');
+        Serial.print(rtc.getSecond());
+        Serial.println();
+        lastRtcPrint = millis();
+    }
+    #endif
 }
 
 void IEC104Core::processReceivedFrame(const byte* buf, byte len) {
