@@ -19,6 +19,14 @@ public:
     void resetWatchdog();
     void softwareReset();
 
+    // Methods for digital inputs
+    void begin();
+    void readAllDigitalInputs();
+    bool hasDigitalInputChanged(int index);
+    int getDigitalInputValue(int index);
+    uint16_t getDigitalInputIoa(int index);
+    int getDigitalInputCount();
+
 private:
     PinInterface* _pinDriver = nullptr;
     uint8_t getDoublePoint(uint8_t open, uint8_t close);

@@ -1,23 +1,17 @@
 #ifndef I_FRAME_PROCESSOR_H
 #define I_FRAME_PROCESSOR_H
 
-#ifdef NATIVE_ENV
-#include <cstdint>
-typedef uint8_t byte;
-#else
+#ifdef ARDUINO
 #include <Arduino.h>
+#else
+#include <cstdint>
+using byte = uint8_t;
 #endif
 
-/**
- * @brief Interface for a class that listens to processed frame events.
- * This is used to decouple FrameProcessor from IEC104Core for testing.
- */
-class IFrameProcessorListener {
+class IFrameProcessor {
 public:
-    virtual ~IFrameProcessorListener() {}
-    virtual void handleInterrogation() = 0;
-    virtual void handleClockSync(const byte* asdu, uint8_t len) = 0;
-    virtual void handleDoubleCommand(const byte* asdu, uint8_t len) = 0;
+    virtual ~IFrameProcessor() {}
+    virtual void processFrame(const byte* buf, byte len) = 0;
 };
 
 #endif // I_FRAME_PROCESSOR_H

@@ -31,6 +31,10 @@ void PinESP32::setupPins() {
     digitalWrite(LED_BUILTIN, LOW);
 }
 
+void PinESP32::setPinMode(int pin, int mode) {
+    pinMode(pin, mode);
+}
+
 void PinESP32::setPin(int pin, int value) {
     digitalWrite(pin, value);
 }

@@ -21,10 +21,19 @@
 #define PIN_CB2_OUT_OPEN  17
 #define PIN_CB2_OUT_CLOSE 11
 #define PIN_MODEM_POWER   13
+#define PIN_DI_1          25
+#define PIN_DI_2          26
+#define PIN_DI_3          27
+#define PIN_DI_4          32
+#define PIN_DI_5          33
+#define PIN_DI_6          34
+#define PIN_DI_7          35
+#define PIN_DI_8          36
 
 class PinESP32 : public PinInterface {
 public:
     void setupPins() override;
+    void setPinMode(int pin, int mode) override;
     void setPin(int pin, int value) override;
     int getPin(int pin) override;
 };

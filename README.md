@@ -2,7 +2,7 @@
 
 ![PlatformIO CI](https://github.com/agungjp/goes/actions/workflows/ci.yml/badge.svg)
 
-Version: 2.0.0
+Version: 2.0.1
 
 GOES is a flexible, modular firmware to build an IEC 60870-5-104 slave (controlled station) on ESP32. It targets RTU use-cases for substation monitoring and control, with clean layering, time stamping, and multiple communication backends.
 
@@ -74,17 +74,17 @@ cd goes
 Select the desired environment in `platformio.ini` or via CLI:
 - `esp32dev-ethernet`
 - `esp32dev-sim800l`
-- `esp32dev-sim7600ce` (default)
+- `esp32dev-sim7600ce`
 - `esp32dev-quectel-ec25`
 
 Build:
 ```bash
-pio run -e esp32dev-ethernet
+pio run
 ```
 
 Upload:
 ```bash
-pio run -e esp32dev-ethernet -t upload
+pio run -t upload
 ```
 
 Serial monitor (optional):

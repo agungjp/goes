@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "config/goes_config.h"
+#include "config/config_ioa.h"
 
 // Include all possible pin drivers
 #include "PinESP32.h"
@@ -117,4 +118,64 @@ uint8_t HardwareManager::getDoublePoint(uint8_t open, uint8_t close) {
   else if (!open && close) return 1; // Open
   else if (open && !close) return 2; // Close
   else return 3; // Unknown
+}
+
+// --- Digital Input Methods ---
+
+// A simple struct to hold the state of a digital input
+struct DigitalInput {
+    int pin;
+    uint16_t ioa;
+    int lastValue;
+    int currentValue;
+};
+
+// Array of digital inputs based on config
+static DigitalInput digitalInputs[] = {
+    {PIN_DI_1, IOA_DI_1, -1, -1},
+    {PIN_DI_2, IOA_DI_2, -1, -1},
+    {PIN_DI_3, IOA_DI_3, -1, -1},
+    {PIN_DI_4, IOA_DI_4, -1, -1},
+    {PIN_DI_5, IOA_DI_5, -1, -1},
+    {PIN_DI_6, IOA_DI_6, -1, -1},
+    {PIN_DI_7, IOA_DI_7, -1, -1},
+    {PIN_DI_8, IOA_DI_8, -1, -1}
+};
+
+const int digitalInputCount = sizeof(digitalInputs) / sizeof(digitalInputs[0]);
+
+void HardwareManager::begin() {
+    init(); // Call existing init
+    for (int i = 0; i < digitalInputCount; ++i) {
+        if (_pinDriver) {
+            _pinDriver->setPinMode(digitalInputs[i].pin, INPUT_PULLUP);
+        }
+    }
+}
+
+void HardwareManager::readAllDigitalInputs() {
+    if (!_pinDriver) return;
+    for (int i = 0; i < digitalInputCount; ++i) {
+        digitalInputs[i].lastValue = digitalInputs[i].currentValue;
+        digitalInputs[i].currentValue = _pinDriver->getPin(digitalInputs[i].pin);
+    }
+}
+
+bool HardwareManager::hasDigitalInputChanged(int index) {
+    if (index < 0 || index >= digitalInputCount) return false;
+    return digitalInputs[index].currentValue != digitalInputs[index].lastValue;
+}
+
+int HardwareManager::getDigitalInputValue(int index) {
+    if (index < 0 || index >= digitalInputCount) return -1;
+    return digitalInputs[index].currentValue;
+}
+
+uint16_t HardwareManager::getDigitalInputIoa(int index) {
+    if (index < 0 || index >= digitalInputCount) return 0;
+    return digitalInputs[index].ioa;
+}
+
+int HardwareManager::getDigitalInputCount() {
+    return digitalInputCount;
 }

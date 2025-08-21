@@ -1,14 +1,18 @@
 #ifndef IEC104_TASK_H
 #define IEC104_TASK_H
 
-#include "iec104/core/IEC104Core.h"
+#include "tasks/task_params.h"
 
 /**
  * @brief FreeRTOS task for managing the IEC 104 application core logic.
  * 
- * This task runs the main logic loop of the IEC 104 protocol, such as
- * handling timeouts, checking for Cause of Transmission (COT) events, etc.
- * @param pvParameters A pointer to the IEC104Core instance.
+ * This task is responsible for:
+ * 1. Checking the incomingFrameQueue for new frames and processing them.
+ * 2. Checking the measurementQueue for new hardware data and processing it.
+ * 3. Running the main logic loop of the IEC 104 protocol (timeouts, etc.).
+ * 4. Placing frames to be sent into the outgoingFrameQueue.
+ * 
+ * @param pvParameters A pointer to an Iec104TaskParams struct.
  */
 void iec104_task(void *pvParameters);
 

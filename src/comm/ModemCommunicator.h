@@ -1,27 +1,31 @@
-#pragma once
+#ifndef MODEM_COMMUNICATOR_H
+#define MODEM_COMMUNICATOR_H
 
 #include "CommInterface.h"
-#include "hal/HardwareManager.h" // For PIN_MODEM_POWER
-#include <Arduino.h> // For Stream, String
-#include <stddef.h> // For size_t
-#include <stdint.h> // For uint8_t
+#include <Arduino.h>
 
 class ModemCommunicator : public CommInterface {
 public:
-    ModemCommunicator(Stream* serial, HardwareManager* hw);
+    ModemCommunicator(CommInterface* physicalLayer);
     void setupConnection() override;
-    void restart() override; // Implements CommInterface::restart()
+    void restart() override;
     void sendData(const uint8_t* data, size_t len) override;
-    int available() override;
-    int read() override;
-    void write(const uint8_t* data, size_t len) override;
-    void flush() override;
+    void loop();
+    void setFrameReceivedCallback(void (*callback)(void*, const byte*, byte), void* ctx);
 
-    // Specific modem functions, not part of CommInterface
-    void updateSerial();
-    void handleModemText(String text); // Use String
+    // Implement pure virtual functions from CommInterface
+    int available() override { return _physicalLayer ? _physicalLayer->available() : 0; }
+    int read() override { return _physicalLayer ? _physicalLayer->read() : -1; }
+    void write(const uint8_t* data, size_t len) override { sendData(data, len); }
+    void flush() override { if (_physicalLayer) _physicalLayer->flush(); }
+    size_t readBytes(uint8_t* buffer, size_t length) override {
+        return _physicalLayer ? _physicalLayer->readBytes(buffer, length) : 0;
+    }
 
 private:
-    Stream* _modem;
-    HardwareManager* _hardware;
+    CommInterface* _physicalLayer;
+    void (*_frameReceivedCallback)(void*, const byte*, byte) = nullptr;
+    void* _callback_ctx = nullptr;
 };
+
+#endif // MODEM_COMMUNICATOR_H

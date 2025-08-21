@@ -1,17 +1,34 @@
-#include "tasks/comm_task.h"
-#include <Arduino.h>
+#include "comm_task.h"
+#include "iec104/transport/IEC104Communicator.h"
+#include "utils/Queue.h"
+#include "IEC104/core/IEC104Core.h"
 
-void comm_task(void *pvParameters) {
-    IEC104Communicator* iec104Communicator = static_cast<IEC104Communicator*>(pvParameters);
+void comm_task(void *pvParameters)
+{
+    CommTaskParams* params = static_cast<CommTaskParams*>(pvParameters);
+    IEC104Communicator* communicator = params->communicator;
+    QueueHandle_t incomingQueue = params->incomingQueue;
+    QueueHandle_t outgoingQueue = params->outgoingQueue;
 
-    while (1) {
-        // Task 1: Read incoming bytes from hardware and enqueue them
-        iec104Communicator->listen();
+    communicator->setFrameReceivedCallback([](void* ctx, const byte* buf, byte len) {
+        QueueHandle_t queue = static_cast<QueueHandle_t>(ctx);
+        if (queue != NULL) {
+            FrameData frame;
+            frame.length = len;
+            memcpy(frame.buffer, buf, len);
+            xQueueSend(queue, &frame, portMAX_DELAY);
+        }
+    }, incomingQueue);
 
-        // Task 2: Dequeue any pending frames and send them to hardware
-        iec104Communicator->processSendQueue();
+    while (true)
+    {
+        communicator->loop();
 
-        // Yield to other tasks
+        FrameData frameToSend;
+        if (xQueueReceive(outgoingQueue, &frameToSend, 0) == pdPASS) {
+            communicator->send(frameToSend.buffer, frameToSend.length);
+        }
+
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }

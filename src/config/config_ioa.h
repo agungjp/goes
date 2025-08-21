@@ -11,4 +11,14 @@
 #define IOA_RELAY_CB1   23000
 #define IOA_RELAY_CB2   23001
 
+// Digital Inputs
+#define IOA_DI_1        2001
+#define IOA_DI_2        2002
+#define IOA_DI_3        2003
+#define IOA_DI_4        2004
+#define IOA_DI_5        2005
+#define IOA_DI_6        2006
+#define IOA_DI_7        2007
+#define IOA_DI_8        2008
+
 #endif

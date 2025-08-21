@@ -9,79 +9,98 @@
 |==============================================================================*/
 
 #include <Arduino.h>
-#ifndef UNIT_TEST
-#include "config/goes_config.h" // Master configuration file
+#include "config/goes_config.h"
+#include "config/config_global.h"
+#include "config/config_ioa.h"
 
 #include "hal/HardwareManager.h"
-#include "comm/CommInterface.h"
-#include "iec104/transport/IEC104Communicator.h"
-#include "iec104/core/IEC104Core.h"
-
-// --- Include all possible communication modules ---
-#if defined(USE_MODEM_SIM800L) || defined(USE_MODEM_SIM7600CE) || defined(USE_MODEM_QUECTEL_EC25)
-#include "comm/ModemCommunicator.h"
-#elif defined(USE_ETHERNET)
 #include "comm/CommEthernet.h"
-#endif
+#include "comm/ModemCommunicator.h"
+#include "iec104/core/IEC104Core.h"
+#include "iec104/transport/IEC104Communicator.h"
 
-// --- Include FreeRTOS task headers ---
-#include "tasks/hal_task.h"
 #include "tasks/comm_task.h"
+#include "tasks/hal_task.h"
 #include "tasks/iec104_task.h"
+#include "tasks/task_params.h"
 
-// --- Statically allocate core components ---
+#include "utils/Queue.h"
+
+// Global variables
 HardwareManager hardwareManager;
 
-#if defined(USE_MODEM_SIM800L) || defined(USE_MODEM_SIM7600CE) || defined(USE_MODEM_QUECTEL_EC25)
-ModemCommunicator comm(&MODEM_SERIAL, &hardwareManager);
-#elif defined(USE_ETHERNET)
-CommEthernet comm(mac, ip, ETHERNET_PORT);
+// Define which communication method to use
+// #define USE_ETHERNET
+#define USE_MODEM
+
+// Forward declarations for communication objects
+#if defined(USE_ETHERNET)
+#include "comm/CommEthernet.h"
+CommEthernet comm;
+#elif defined(USE_MODEM)
+#include "comm/ModemCommunicator.h"
+#include "comm/CommInterface.h"
+// We need a dummy CommInterface for the modem if Ethernet is not used.
+// This could be a simple class that does nothing.
+class DummyComm : public CommInterface {
+public:
+    void setupConnection() override {}
+    void restart() override {}
+    void sendData(const uint8_t* data, size_t len) override {}
+    int available() override { return 0; }
+    int read() override { return -1; }
+    void write(const uint8_t* data, size_t len) override {}
+    void flush() override {}
+};
+DummyComm dummy;
+ModemCommunicator comm(&dummy);
 #else
-#error "No communication module selected in goes_config.h"
+#error "No communication method defined. Please define USE_ETHERNET or USE_MODEM."
 #endif
 
-IEC104Communicator iec104Communicator(&comm);
-IEC104Core iec104Core(&iec104Communicator, &hardwareManager);
+IEC104Core iec104Core;
+IEC104Communicator iec104Communicator(&comm, &iec104Core);
 
-void setup() {
-  // Initialize Serial ports first
-#if defined(BOARD_ESP32)
+QueueHandle_t incomingFrameQueue;
+QueueHandle_t outgoingFrameQueue;
+QueueHandle_t measurementQueue;
+
+void setup() 
+{
   Serial.begin(115200);
-  Serial1.begin(9600);
-#endif
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB
+  }
+  Serial.println("GOES MCU Application");
 
-  // 1. Initialize Hardware Abstraction Layer
-  hardwareManager.init(); // Handles I2C, Watchdog, and Pins
-
-  // 2. Initialize Communication and Core Logic
-  comm.setupConnection();
-  comm.restart();
-  comm.flush();
-
-  // 3. Forward I-frames to core logic
-  iec104Communicator.setFrameHandler(
-    [](void* ctx, const byte* buf, byte len){
-      static_cast<IEC104Core*>(ctx)->processReceivedFrame(buf, len);
-    },
-    &iec104Core // Pass the address of the static core object
-  );
-
-  // 4. Create FreeRTOS tasks and pin them to specific cores
-  // Core 0: Dedicated to the main application logic (IEC-104 and communication)
-  // Core 1: Used for lower-priority tasks and the default Arduino loop/system tasks
-  xTaskCreatePinnedToCore(comm_task, "Comm_Task", 4096, &iec104Communicator, 10, NULL, 0);
-  xTaskCreatePinnedToCore(iec104_task, "IEC104_Task", 4096, &iec104Core, 8, NULL, 0);
+  hardwareManager.begin();
   
-  // Pin the hardware task to Core 1 to keep it separate from the main logic
-  xTaskCreatePinnedToCore(hal_task, "HAL_Task", 2048, &hardwareManager, 5, NULL, 1);
+  comm.setupConnection();
 
-  // After starting the scheduler, setup() and loop() will no longer be the main
-  // execution thread. The tasks will take over.
+  // Create queues
+  incomingFrameQueue = xQueueCreate(10, sizeof(FrameData));
+  outgoingFrameQueue = xQueueCreate(10, sizeof(FrameData));
+  measurementQueue = xQueueCreate(20, sizeof(MeasurementData));
+
+  // Create task parameters
+  static CommTaskParams comm_params;
+  comm_params.communicator = &iec104Communicator;
+  comm_params.incomingQueue = incomingFrameQueue;
+  comm_params.outgoingQueue = outgoingFrameQueue;
+
+  static Iec104TaskParams iec104_params;
+  iec104_params.core = &iec104Core;
+  iec104_params.incomingQueue = incomingFrameQueue;
+  iec104_params.outgoingQueue = outgoingFrameQueue;
+  iec104_params.measurementQueue = measurementQueue;
+
+  // Create tasks
+  xTaskCreatePinnedToCore(comm_task, "Comm_Task", 4096, &comm_params, 10, NULL, 0);
+  xTaskCreatePinnedToCore(iec104_task, "IEC104_Task", 4096, &iec104_params, 8, NULL, 1);
+  xTaskCreatePinnedToCore(hal_task, "HAL_Task", 2048, measurementQueue, 5, NULL, 1);
 }
 
-void loop() {
-  // The loop is intentionally left empty. FreeRTOS scheduler handles all operations.
-  vTaskDelay(portMAX_DELAY); // Or simply leave it empty
+void loop() 
+{
+  vTaskDelete(NULL);
 }
-
-#endif // UNIT_TEST

@@ -105,4 +105,11 @@ void CommEthernet::flush() {
     }
 }
 
+size_t CommEthernet::readBytes(uint8_t* buffer, size_t length) {
+    if (_client && _client.connected()) {
+        return _client.read(buffer, length);
+    }
+    return 0;
+}
+
 #endif // USE_ETHERNET
