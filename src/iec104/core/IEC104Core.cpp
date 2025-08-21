@@ -2,7 +2,7 @@
 #include "config/goes_config.h"
 #include "config/config_global.h" // For TEST_ACT_TIMEOUT
 #include "hal/HardwareManager.h" // For HardwareManager
-#include "hal/PinESP32.h" // Direct include for pin definitions
+#include "hal/PinESP32.h"
 
 IEC104Core::IEC104Core(IEC104Communicator* comm, HardwareManager* hw) : _comm(comm), _hw(hw) {
     // Constructor
@@ -104,22 +104,15 @@ void IEC104Core::updateInputs() {
       remote2DebounceReady = true;
     }
   }
+  // ... existing code ...
   gfd = _hw->getPin(IOA_GFD) == LOW;         // IOA 1002
   supply = _hw->getPin(IOA_SUPPLY);   // IOA 1004
-  bool cb1_open  = _hw->getPin(PIN_CB1_OPEN);
-  bool cb1_close = _hw->getPin(PIN_CB1_CLOSE);
-  cb1 = getDoublePoint(cb1_open, cb1_close);  // IOA 11000
-  bool cb2_open  = _hw->getPin(PIN_CB2_OPEN);
-  bool cb2_close = _hw->getPin(PIN_CB2_CLOSE);
-  cb2 = getDoublePoint(cb2_open, cb2_close);  // IOA 11001
+  // ... existing code ...
+  cb1 = _hw->getCircuitBreakerStatus(1);
+  cb2 = _hw->getCircuitBreakerStatus(2);
 }
 
-uint8_t IEC104Core::getDoublePoint(uint8_t open, uint8_t close) {
-  if (!open && !close) return 0; // Unknown
-  else if (!open && close) return 1; // Open
-  else if (open && !close) return 2; // Close
-  else return 3; // Unknown
-}
+
 
 void IEC104Core::checkCOS() {
   if (relayBusy) return;
@@ -178,7 +171,7 @@ void IEC104Core::handleGI(const byte* buf, byte len) {
   updateInputs();
 
   byte actCon[] = {0x64, 0x01, 0x07, 0x00, ca_lo, ca_hi, 0x00, 0x00, 0x00, 0x14};
-  _comm->sendIFrame(actCon, sizeof(actCon)); delay(50);
+  _comm->queueIFrame(actCon, sizeof(actCon));
 
   byte ti1[] = {
     0x01, 0x04, 0x14, 0x00, ca_lo, ca_hi,
@@ -191,7 +184,7 @@ void IEC104Core::handleGI(const byte* buf, byte len) {
     // Supply (IOA 1004)
     0xEC, 0x03, 0x00, (byte)(supply ? 1 : 0)
   };
-  _comm->sendIFrame(ti1, sizeof(ti1)); delay(50);
+  _comm->queueIFrame(ti1, sizeof(ti1));
 
   byte ti3[] = {
     0x03, 0x02, 0x14, 0x00, ca_lo, ca_hi,
@@ -200,11 +193,10 @@ void IEC104Core::handleGI(const byte* buf, byte len) {
     // CB2 (IOA 11001)
     0xF9, 0x2A, 0x00, cb2
   };
-  _comm->sendIFrame(ti3, sizeof(ti3)); delay(50);
+  _comm->queueIFrame(ti3, sizeof(ti3));
 
   byte term[] = {0x64, 0x01, 0x0A, 0x00, ca_lo, ca_hi, 0x00, 0x00, 0x00, 0x14};
-  _comm->sendIFrame(term, sizeof(term));
-  delay(200);
+  _comm->queueIFrame(term, sizeof(term));
 }
 
 void IEC104Core::handleTI46(const byte* d, byte len) {
@@ -236,11 +228,9 @@ void IEC104Core::handleTI46(const byte* d, byte len) {
 
   // Trigger relay (ON), tidak pakai delay!
   if (ioa == IOA_RELAY_CB1) {
-    if (sco == 1) _hw->setPin(PIN_CB1_OUT_OPEN, HIGH);
-    else if (sco == 2) _hw->setPin(PIN_CB1_OUT_CLOSE, HIGH);
+    _hw->operateCircuitBreaker(1, sco);
   } else if (ioa == IOA_RELAY_CB2) {
-    if (sco == 1) _hw->setPin(PIN_CB2_OUT_OPEN, HIGH);
-    else if (sco == 2) _hw->setPin(PIN_CB2_OUT_CLOSE, HIGH);
+    _hw->operateCircuitBreaker(2, sco);
   }
 }
 
@@ -271,12 +261,11 @@ void IEC104Core::handlePendingRelayTI46() {
       (byte)(ti46_pending_ioa & 0xFF), (byte)((ti46_pending_ioa >> 8) & 0xFF), (byte)((ti46_pending_ioa >> 16) & 0xFF),
       ti46_pending_sco
     };
-    _comm->sendIFrame(ack, sizeof(ack)); delay(50);
+    _comm->queueIFrame(ack, sizeof(ack));
 
     // 2. Kirim TI 31 (status CB terbaru)
     if (ti46_pending_ioa == IOA_RELAY_CB1) sendTimestamped(31, IOA_CB1, cb1);
     else if (ti46_pending_ioa == IOA_RELAY_CB2) sendTimestamped(31, IOA_CB2, cb2);
-    delay(50);
 
     // 3. Kirim Termination COT=10
     byte term[] = {
@@ -284,7 +273,7 @@ void IEC104Core::handlePendingRelayTI46() {
       (byte)(ti46_pending_ioa & 0xFF), (byte)((ti46_pending_ioa >> 8) & 0xFF), (byte)((ti46_pending_ioa >> 16) & 0xFF),
       ti46_pending_sco
     };
-    _comm->sendIFrame(term, sizeof(term)); delay(50);
+    _comm->queueIFrame(term, sizeof(term));
 
     cot7_sent = true;
     relayBusy = false;
@@ -300,7 +289,7 @@ void IEC104Core::handleRTC(const byte* buf, byte len) {
   setRTCFromCP56(time);
   byte ack[16] = { 0x67, 0x01, 0x07, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 };
   memcpy(&ack[9], time, 7);
-  _comm->sendIFrame(ack, sizeof(ack));
+  _comm->queueIFrame(ack, sizeof(ack));
 }
 
 void IEC104Core::setRTCFromCP56(const byte* time) {
@@ -362,7 +351,7 @@ void IEC104Core::sendTimestamped(byte ti, uint16_t ioa, byte value) {
   convertCP56Time2a(cp56);
   byte pdu[17] = {ti, 1, 3, 0, 1, 0, (byte)(ioa & 0xFF), (byte)(ioa >> 8), 0x00, value};
   memcpy(&pdu[10], cp56, 7);
-  _comm->sendIFrame(pdu, sizeof(pdu));
+  _comm->queueIFrame(pdu, sizeof(pdu));
 }
 
 void IEC104Core::softwareReset() {

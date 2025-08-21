@@ -83,3 +83,38 @@ void HardwareManager::updateHeartbeatLED() {
     setPin(LED_BUILTIN, millis() % 1000 < 100);
     resetWatchdog(); // Reset watchdog on every heartbeat
 }
+
+uint8_t HardwareManager::getCircuitBreakerStatus(int cbNumber) {
+    if (!_pinDriver) return 0; // Unknown state if no driver
+
+    bool open, close;
+    if (cbNumber == 1) {
+        open = _pinDriver->getPin(PIN_CB1_OPEN);
+        close = _pinDriver->getPin(PIN_CB1_CLOSE);
+    } else if (cbNumber == 2) {
+        open = _pinDriver->getPin(PIN_CB2_OPEN);
+        close = _pinDriver->getPin(PIN_CB2_CLOSE);
+    } else {
+        return 0; // Invalid CB number
+    }
+    return getDoublePoint(open, close);
+}
+
+void HardwareManager::operateCircuitBreaker(int cbNumber, int command) {
+    if (!_pinDriver) return;
+
+    if (cbNumber == 1) {
+        if (command == 1) _pinDriver->setPin(PIN_CB1_OUT_OPEN, HIGH);
+        else if (command == 2) _pinDriver->setPin(PIN_CB1_OUT_CLOSE, HIGH);
+    } else if (cbNumber == 2) {
+        if (command == 1) _pinDriver->setPin(PIN_CB2_OUT_OPEN, HIGH);
+        else if (command == 2) _pinDriver->setPin(PIN_CB2_OUT_CLOSE, HIGH);
+    }
+}
+
+uint8_t HardwareManager::getDoublePoint(uint8_t open, uint8_t close) {
+  if (!open && !close) return 0; // Unknown
+  else if (!open && close) return 1; // Open
+  else if (open && !close) return 2; // Close
+  else return 3; // Unknown
+}

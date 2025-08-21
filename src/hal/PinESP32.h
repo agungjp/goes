@@ -2,7 +2,9 @@
 #define PIN_ESP32_H
 
 #include "PinInterface.h"
+#ifndef NATIVE_ENV
 #include <Arduino.h>
+#endif
 
 // Pin mappings for ESP32 Dev Module
 #define LED_BUILTIN 2
