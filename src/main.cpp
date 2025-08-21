@@ -26,15 +26,21 @@
 
 
 
-// --- Global Pointers for Core Components ---
-// These pointers will hold the instances of our core components.
-// They are initialized in setup() based on hardware configuration.
-HardwareManager* hardwareManager = nullptr;
-CommInterface* comm = nullptr;
-IEC104Communicator* iec104Communicator = nullptr;
-IEC104Core* iec104Core = nullptr;
+// --- Statically allocate core components instead of using pointers ---
+// This avoids dynamic memory allocation (new/delete), making the system
+// more stable and predictable, which is critical for embedded devices.
+HardwareManager hardwareManager;
 
- 
+#if defined(USE_MODEM_SIM800L) || defined(USE_MODEM_SIM7600CE) || defined(USE_MODEM_QUECTEL_EC25)
+ModemCommunicator comm(&MODEM_SERIAL, &hardwareManager);
+#elif defined(USE_ETHERNET)
+CommEthernet comm(mac, ip, ETHERNET_PORT);
+#else
+#error "No communication module selected in goes_config.h"
+#endif
+
+IEC104Communicator iec104Communicator(&comm);
+IEC104Core iec104Core(&iec104Communicator, &hardwareManager);
 
 void setup() {
   // Initialize Serial ports first
@@ -45,40 +51,27 @@ void setup() {
 #endif
 
   // 1. Initialize Hardware Abstraction Layer
-  hardwareManager = new HardwareManager();
-  hardwareManager->init(); // Handles I2C, Watchdog, and Pins
+  hardwareManager.init(); // Handles I2C, Watchdog, and Pins
 
-  // 2. Communication Module Factory
-  // Select the communication module based on flags in goes_config.h
-#if defined(USE_MODEM_SIM800L) || defined(USE_MODEM_SIM7600CE) || defined(USE_MODEM_QUECTEL_EC25)
-  comm = new ModemCommunicator(&MODEM_SERIAL, hardwareManager);
-#elif defined(USE_ETHERNET)
-  comm = new CommEthernet(mac, ip, ETHERNET_PORT);
-#else
-  #error "No communication module selected in goes_config.h"
-#endif
+  // 2. Initialize Communication and Core Logic
+  comm.setupConnection();
+  comm.restart();
+  comm.flush();
 
-  // 3. Initialize Communication and Core Logic
-  comm->setupConnection();
-  comm->restart();
-  comm->flush();
-
-  iec104Communicator = new IEC104Communicator(comm);
-  iec104Core = new IEC104Core(iec104Communicator, hardwareManager);
-
-  // Forward I-frames to core logic
-  iec104Communicator->setFrameHandler(
+  // 3. Forward I-frames to core logic
+  // The communicator will now call the core's handler when I-frames arrive.
+  iec104Communicator.setFrameHandler(
     [](void* ctx, const byte* buf, byte len){
       static_cast<IEC104Core*>(ctx)->processReceivedFrame(buf, len);
     },
-    iec104Core
+    &iec104Core // Pass the address of the static core object
   );
 }
 
 void loop() {
-  hardwareManager->updateHeartbeatLED(); // This also resets the watchdog
-  iec104Communicator->listen();
-  iec104Core->run();
+  hardwareManager.updateHeartbeatLED(); // This also resets the watchdog
+  iec104Communicator.listen();
+  iec104Core.run();
 }
 
 #endif // UNIT_TEST

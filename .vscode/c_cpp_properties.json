@@ -8,6 +8,7 @@
         {
             "name": "PlatformIO",
             "includePath": [
+                "/Users/agungperkasa/Documents/02 Dev/GOES/goes/include",
                 "/Users/agungperkasa/Documents/02 Dev/GOES/goes/src",
                 "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/libraries/Ethernet/src",
                 "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
@@ -209,7 +210,9 @@
                 "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/dio_qspi/include",
                 "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/cores/esp32",
                 "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/variants/esp32",
-                "/Users/agungperkasa/Documents/02 Dev/GOES/goes/.pio/libdeps/esp32dev-sim7600ce/Unity/src",
+                "/Users/agungperkasa/Documents/02 Dev/GOES/goes/.pio/libdeps/esp32dev-sim7600ce/EspSoftwareSerial/src",
+                "/Users/agungperkasa/Documents/02 Dev/GOES/goes/.pio/libdeps/esp32dev-sim7600ce/Unity",
+                "/Users/agungperkasa/Documents/02 Dev/GOES/goes/.pio/libdeps/esp32dev-sim7600ce/ghostl/src",
                 "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src",
                 "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/libraries/AsyncUDP/src",
                 "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src",
@@ -245,6 +248,7 @@
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
+                    "/Users/agungperkasa/Documents/02 Dev/GOES/goes/include",
                     "/Users/agungperkasa/Documents/02 Dev/GOES/goes/src",
                     "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/libraries/Ethernet/src",
                     "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
@@ -446,7 +450,9 @@
                     "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/dio_qspi/include",
                     "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/cores/esp32",
                     "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/variants/esp32",
-                    "/Users/agungperkasa/Documents/02 Dev/GOES/goes/.pio/libdeps/esp32dev-sim7600ce/Unity/src",
+                    "/Users/agungperkasa/Documents/02 Dev/GOES/goes/.pio/libdeps/esp32dev-sim7600ce/EspSoftwareSerial/src",
+                    "/Users/agungperkasa/Documents/02 Dev/GOES/goes/.pio/libdeps/esp32dev-sim7600ce/Unity",
+                    "/Users/agungperkasa/Documents/02 Dev/GOES/goes/.pio/libdeps/esp32dev-sim7600ce/ghostl/src",
                     "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src",
                     "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/libraries/AsyncUDP/src",
                     "/Users/agungperkasa/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src",
