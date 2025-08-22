@@ -17,6 +17,7 @@ public:
     int read() override;
     void write(const uint8_t* data, size_t len) override;
     void flush() override;
+    size_t readBytes(uint8_t* buffer, size_t length) override;
 
 private:
     void checkClient();

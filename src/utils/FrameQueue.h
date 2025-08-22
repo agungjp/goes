@@ -10,10 +10,12 @@
 using byte = uint8_t;
 #endif
 
-#include "config/config_global.h" // For FRAME_SIZE
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include "iec104/iec104_config.h" // For FRAME_SIZE
 
 #ifndef FRAME_SIZE
-#define FRAME_SIZE 255 // Default frame size
+#define FRAME_SIZE 256
 #endif
 
 #define QUEUE_SIZE 10 // Number of frames the queue can hold

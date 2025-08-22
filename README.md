@@ -2,7 +2,7 @@
 
 ![PlatformIO CI](https://github.com/agungjp/goes/actions/workflows/ci.yml/badge.svg)
 
-Version: 2.0.1
+Version: 2.1.0
 
 GOES is a flexible, modular firmware to build an IEC 60870-5-104 slave (controlled station) on ESP32. It targets RTU use-cases for substation monitoring and control, with clean layering, time stamping, and multiple communication backends.
 
@@ -15,6 +15,9 @@ GOES is a flexible, modular firmware to build an IEC 60870-5-104 slave (controll
 - Hardware abstraction: easy to adapt pinouts, relays, and sensors.
 - Time management: RTC DS3231 with CP56Time2a conversions.
 - Built with PlatformIO: reproducible builds and dependency management.
+- Embedded Web UI (feature‑gated) with live status (heap, per-task stack), configuration editor, and real‑time log viewer.
+- Runtime feature flags persisted in LittleFS (digital inputs, breakers, outputs, granular sensor groups, Ethernet option, RTC, web, web log capture).
+- In‑memory ring buffer log (/api/logs) toggleable without reboot.
 
 ## Architecture
 
@@ -43,7 +46,8 @@ src/
     board_esp32.h
     config_global.h
     config_ioa.h
-    goes_config.h
+    device_config.h
+    ioa_config.h
   hal/
     HardwareManager.{h,cpp}
     PinInterface.h
@@ -94,10 +98,14 @@ pio device monitor -b 115200
 
 ### Configuration
 
-- Pins and hardware mapping: `src/config/board_esp32.h`
-- Global configuration (timeouts, buffers): `src/config/config_global.h`
-- IOA mapping for points: `src/config/config_ioa.h`
-- Board and communication selection: `src/config/goes_config.h` (features are toggled via PlatformIO build flags)
+Current unified config files (legacy `board_esp32.h`, `config_global.h`, `config_ioa.h` have been removed and merged):
+
+- Hardware, pinout, tasks, comm selection: `src/config/device_config.h`
+- IEC-104 IOA mapping (authoritative addresses): `src/config/ioa_config.h`
+- Runtime persistent configuration manager (LittleFS merge & revision hash): `src/config/ConfigManager.{h,cpp}`
+- IEC‑104 protocol constants & type IDs: `src/iec104/iec104_config.h`
+
+Use the embedded Web UI (if `feat_web` enabled) to edit and persist `device` & `ioa` config JSON; files stored in LittleFS as `/device_config.json` and `/ioa_config.json`.
 
 ## Testing
 
@@ -110,6 +118,10 @@ pio device monitor -b 115200
   - environment example: `esp32dev-sim7600ce`
   - run: `pio test -e esp32dev-sim7600ce --upload-port <your-serial-port>`
   - if you only want to compile tests without uploading: `pio test -e esp32dev-sim7600ce --without-uploading --without-testing`
+
+## Changelog
+
+See `docs/CHANGELOG.md` for full release history. Unreleased section tracks upcoming work.
 
 ## Roadmap (Reliability & Features)
 

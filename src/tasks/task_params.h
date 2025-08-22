@@ -6,6 +6,7 @@
 
 class IEC104Communicator;
 class IEC104Core;
+class HardwareManager;
 
 // Struct to pass necessary components to the communication task
 struct CommTaskParams {
@@ -17,6 +18,7 @@ struct CommTaskParams {
 // Struct to pass necessary components to the IEC104 logic task
 struct Iec104TaskParams {
     IEC104Core* core;
+    HardwareManager* hardwareManager;
     QueueHandle_t incomingQueue;
     QueueHandle_t outgoingQueue;
     QueueHandle_t measurementQueue;

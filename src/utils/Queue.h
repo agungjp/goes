@@ -8,7 +8,7 @@
 // Data structure for frame data
 struct FrameData {
     byte buffer[256];
-    byte length;
+    uint16_t length; // allow full 0..256 without overflow warnings
 };
 
 // Data structure for measurement data

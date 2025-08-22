@@ -1,30 +1,38 @@
 #ifndef MODEM_COMMUNICATOR_H
 #define MODEM_COMMUNICATOR_H
 
-#include "CommInterface.h"
 #include <Arduino.h>
+#include "CommInterface.h"
 
 class ModemCommunicator : public CommInterface {
 public:
-    ModemCommunicator(CommInterface* physicalLayer);
+    // Constructor now takes a HardwareSerial object for the modem
+    ModemCommunicator(HardwareSerial* serial);
+
+    // Implementations for the CommInterface
     void setupConnection() override;
     void restart() override;
     void sendData(const uint8_t* data, size_t len) override;
-    void loop();
-    void setFrameReceivedCallback(void (*callback)(void*, const byte*, byte), void* ctx);
+    int available() override;
+    int read() override;
+    void write(const uint8_t* data, size_t len) override;
+    void flush() override;
+    size_t readBytes(uint8_t* buffer, size_t length) override;
 
-    // Implement pure virtual functions from CommInterface
-    int available() override { return _physicalLayer ? _physicalLayer->available() : 0; }
-    int read() override { return _physicalLayer ? _physicalLayer->read() : -1; }
-    void write(const uint8_t* data, size_t len) override { sendData(data, len); }
-    void flush() override { if (_physicalLayer) _physicalLayer->flush(); }
-    size_t readBytes(uint8_t* buffer, size_t length) override {
-        return _physicalLayer ? _physicalLayer->readBytes(buffer, length) : 0;
-    }
+    // Loop function to be called periodically to check for incoming data
+    void loop();
+    
+    // Callback for when a full frame is received
+    using FrameReceivedCallback = void(*)(void* ctx, const byte* buf, byte len);
+    void setFrameReceivedCallback(FrameReceivedCallback callback, void* ctx);
 
 private:
-    CommInterface* _physicalLayer;
-    void (*_frameReceivedCallback)(void*, const byte*, byte) = nullptr;
+    HardwareSerial* _modemSerial;
+    
+    // Helper to print modem responses to the main Serial for debugging
+    void updateSerial();
+
+    FrameReceivedCallback _frameReceivedCallback = nullptr;
     void* _callback_ctx = nullptr;
 };
 

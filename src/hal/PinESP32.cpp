@@ -1,34 +1,29 @@
 #include "PinESP32.h"
+#include "config/device_config.h" // Menggunakan file konfigurasi terpusat
 #include <Arduino.h>
 
-
-
 void PinESP32::setupPins() {
-    // Input pins
-    pinMode(PIN_GFD, INPUT_PULLUP);
-    pinMode(PIN_SUPPLY, INPUT_PULLUP);
-    pinMode(PIN_REMOTE1, INPUT_PULLUP);
-    pinMode(PIN_CB1_OPEN, INPUT_PULLUP);
-    pinMode(PIN_CB1_CLOSE, INPUT_PULLUP);
-    pinMode(PIN_REMOTE2, INPUT_PULLUP);
-    pinMode(PIN_CB2_OPEN, INPUT_PULLUP);
-    pinMode(PIN_CB2_CLOSE, INPUT_PULLUP);
+    // Inisialisasi pin-pin yang terhubung langsung ke ESP32
     
-    // Output pins
-    pinMode(PIN_MODEM_POWER, OUTPUT);
-    pinMode(PIN_CB1_OUT_OPEN, OUTPUT);
-    pinMode(PIN_CB1_OUT_CLOSE, OUTPUT);
-    pinMode(PIN_CB2_OUT_OPEN, OUTPUT);
-    pinMode(PIN_CB2_OUT_CLOSE, OUTPUT);
-    pinMode(LED_BUILTIN, OUTPUT);
+    // -- Komunikasi --
+    // I2C sudah diinisialisasi di HardwareManager
+    // SPI sudah diinisialisasi di HardwareManager
+    
+    // UART untuk Modem
+    Serial.begin(115200); // Serial debug
+    Serial2.begin(9600, SERIAL_8N1, UART_MODEM_RX_PIN, UART_MODEM_TX_PIN);
 
-    // Initialize output pins to LOW
-    digitalWrite(PIN_CB1_OUT_OPEN, LOW);
-    digitalWrite(PIN_CB1_OUT_CLOSE, LOW);
-    digitalWrite(PIN_CB2_OUT_OPEN, LOW);
-    digitalWrite(PIN_CB2_OUT_CLOSE, LOW);
-    digitalWrite(PIN_MODEM_POWER, LOW);
-    digitalWrite(LED_BUILTIN, LOW);
+    // -- Output Kritis --
+    pinMode(LED_HEARTBEAT_PIN, OUTPUT);
+    pinMode(MODEM_RESET_PIN, OUTPUT);
+    digitalWrite(LED_HEARTBEAT_PIN, LOW);
+    digitalWrite(MODEM_RESET_PIN, LOW);
+
+    // -- Sensor --
+    pinMode(DHT22_DATA_PIN, INPUT);
+
+    // Catatan: Pin untuk GPIO expander (PCF8574T) tidak di-setup di sini.
+    // Mereka dikelola oleh library PCF8574T melalui I2C.
 }
 
 void PinESP32::setPinMode(int pin, int mode) {
