@@ -1,0 +1,1069 @@
+<!DOCTYPE html><html lang='en'>
+<head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1.0'>
+<title>GOES Configurator - Configuration</title>
+<style>
+ :root { --accent:#0078d4; --accent-hover:#0062ad; --bg:#f2f5f9; --panel:#fff; --border:#d4dbe4; }
+ body{font-family:Arial,Helvetica,sans-serif;margin:0;background:var(--bg);color:#222}
+ header{background:#1a3d6d;color:#fff;padding:12px 22px;position:sticky;top:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+ .notif-bar{position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:1100;background:#fff4c2;color:#664d00;font-size:14px;font-weight:600;padding:12px 24px;display:none;box-shadow:0 4px 12px rgba(0,0,0,.25);border-radius:8px;border:1px solid #e6d700;max-width:90%;text-align:center;animation:slideInDown 0.3s ease-out}
+ @keyframes slideInDown{from{opacity:0;transform:translate(-50%,-20px)}to{opacity:1;transform:translate(-50%,0)}}
+ h1{margin:0;font-size:19px;letter-spacing:.5px;font-weight:600}
+ main{padding:18px;max-width:1220px;margin:0 auto}
+ h2{margin:28px 0 12px;font-size:17px;color:#1a3d6d}
+ fieldset{border:1px solid var(--border);margin:0 0 18px;padding:14px 16px;border-radius:10px;background:var(--panel)}
+ legend{padding:0 6px;font-weight:600;font-size:13px;color:#1a3d6d}
+ label.lbl{display:block;margin:0 0 4px;font-weight:600;font-size:11px;letter-spacing:.3px;text-transform:uppercase;color:#425b76}
+ input[type=text],input[type=number],select{width:100%;padding:8px 10px;border:1px solid #b8c4d1;border-radius:6px;font-size:14px;background:#fff;box-sizing:border-box}
+ button{background:var(--accent);color:#fff;padding:10px 20px;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.15);transition:.18s}
+ button:hover{background:var(--accent-hover)}
+ .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+ .two-col{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px}
+ .muted{font-size:11px;color:#667}
+ .status{display:none}
+ #liveStatusPanel span { color: #333; }
+ #liveStatusPanel strong, #liveStatusPanel code { color: #000; font-weight: 600; }
+ #liveStatusPanel.offline{background:#fdeeee;border-color:#f2b8b5}
+ #liveStatusPanel.prototype{background:#fff3cd;border:1px solid #ffeaa7;color:#856404}
+ .prototype-badge{background:#f39c12;color:#fff;font-size:10px;padding:3px 8px;border-radius:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+ footer{padding:14px 24px;text-align:center;font-size:11px;color:#678;background:#f0f4f8;margin-top:40px;border-top:1px solid #d5dce3}
+ pre#logBox{background:#111;color:#0f0;padding:10px;height:260px;overflow:auto;font-size:11px;border-radius:6px;border:1px solid #333}
+ .toggles{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+ .toggle-card{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#ffffff;border:1px solid #e1e6ec;border-radius:8px;font-size:11px;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+ .switch{position:relative;display:inline-block;width:42px;height:22px}
+ .switch input{opacity:0;width:0;height:0}
+ .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#b5bcc5;transition:.3s;border-radius:34px}
+ .slider:before{position:absolute;content:"";height:18px;width:18px;left:2px;top:2px;background:#fff;transition:.3s;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+ .switch input:checked + .slider{background:var(--accent)}
+ .switch input:checked + .slider:before{transform:translateX(20px)}
+ .group-label{grid-column:1/-1;margin-top:8px;font-size:9.5px;font-weight:700;letter-spacing:.7px;color:#555;text-transform:uppercase}
+ .save-bar{padding:10px 0;margin-top:18px;display:flex;gap:12px;align-items:center}
+ .tag{background:#1a3d6d;color:#fff;font-size:10px;padding:3px 7px;border-radius:11px;margin-left:10px;letter-spacing:.5px}
+ #ioa-dynamic fieldset{margin-bottom:14px}
+ #ioa-dynamic .ioa-row{display:grid;grid-template-columns:150px 1fr;align-items:center;gap:8px;margin:4px 0}
+ #ioa-dynamic label{font-size:12px;font-weight:600;color:#244}
+ .notif-bar.error{background:#ff4757;color:#fff;border-color:#ff3838}
+ .notif-bar.info{background:#2ed573;color:#fff;border-color:#20bf6b}
+ .notif-bar.success{background:#2ed573;color:#fff;border-color:#20bf6b}
+ .notif-bar.warning{background:#ffa502;color:#fff;border-color:#ff9500}
+</style></head>
+<body><header><h1>GOES RTU Configuration</h1><span class='tag'>v2.x-proto</span>
+<nav style='margin-left:auto'>
+  <a href='config.html' style='color:#fff;text-decoration:none;margin-right:15px;font-weight:600'>Configuration</a>
+  <a href='monitor.html' style='color:#ccc;text-decoration:none;font-weight:600'>Monitoring</a>
+</nav>
+</header>
+<div id='liveStatusPanel' style='display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:8px 22px;background:#e9f2ff;border-bottom:1px solid #c4d9f2;font-size:11.5px'>
+ <span class='prototype-badge'>Prototype Mode</span>
+ <span id='ls_conn'>Polling...</span>
+ <span>| Comm: <strong id='ls_comm'>-</strong></span>
+ <span>| IEC104 Tx:<span id='ls_iec104_tx'>-</span></span>
+ <span>| IEC104 Rx:<span id='ls_iec104_rx'>-</span></span>
+ <span>| IEC104 Last(ms):<span id='ls_iec104_last'>-</span></span>
+ <span>| Uptime: <span id='ls_uptime'>-</span></span>
+ <span>| Heap: <span id='ls_heap'>-</span></span>
+ <span>| Stack(main): <span id='ls_stack'>-</span></span>
+ <span>| Stack(comm): <span id='ls_stack_comm'>-</span></span>
+ <span>| Stack(iec104): <span id='ls_stack_iec104'>-</span></span>
+ <span>| Stack(hal): <span id='ls_stack_hal'>-</span></span>
+ <span>| Rev: <code id='ls_rev'>-</code></span>
+</div>
+<div id='rtuClockBar' style='display:flex;align-items:center;gap:14px;padding:10px 22px;background:#102a46;color:#fff;font-size:14px;font-weight:600;border-bottom:2px solid #0d2238'>
+  <div style='font-size:12px;letter-spacing:.5px;text-transform:uppercase;opacity:.85'>RTU Clock</div>
+  <div style='font-family:monospace;font-size:16px' id='rtu_time_full'>--</div>
+  <div style='font-size:11px;background:#1f4d80;padding:3px 8px;border-radius:12px' id='rtu_time_source'>Source: -</div>
+  <div style='margin-left:auto;font-size:11px;opacity:.8'>Updated <span id='rtu_time_updated'>-</span></div>
+</div>
+<div id='notif' class='notif-bar'></div><main>
+<section id='device-section'><h2>Device Configuration</h2>
+<form id='device-form'><div class='two-col'>
+<!-- System fieldset (top) adjustments: remove embedded restart button, add time source select -->
+<fieldset><legend>System</legend>
+ <div class='grid' style='grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px'>
+    <div style='display:flex;align-items:center;justify-content:space-between' class='toggle-card'>
+       <span>SOE</span>
+       <label class='switch'><input type='checkbox' id='feat_soe'><span class='slider'></span></label>
+    </div>
+    <div>
+       <label class='lbl' for='soe_buffer'>SOE Buffer</label>
+       <input type='number' id='soe_buffer' name='soe_buffer' placeholder='64' min='1'>
+       <div class='muted'>Ukuran penampung event.</div>
+    </div>
+    <div>
+       <label class='lbl' for='time_source'>Time Source</label>
+       <select id='time_source' name='time_source'>
+          <option value='ntp'>NTP</option>
+          <option value='iec104'>IEC104 TI103</option>
+       </select>
+       <div class='muted'>Sumber update RTC.</div>
+    </div>
+    <div>
+       <label class='lbl' for='time_sync_s'>Time Sync (s)</label>
+       <input type='number' id='time_sync_s' name='time_sync_s' placeholder='3600' min='10'>
+       <div class='muted'>Interval sync.</div>
+    </div>
+    <div>
+       <label class='lbl' for='heartbeat_s'>Heartbeat (s)</label>
+       <input type='number' id='heartbeat_s' name='heartbeat_s' placeholder='30' min='1'>
+       <div class='muted'>Interval heartbeat.</div>
+    </div>
+ </div>
+</fieldset>
+<fieldset><legend>Communication</legend>
+ <div class='grid'>
+   <div><label class='lbl' for='comm_method'>Mode</label><select id='comm_method' name='comm_method'><option value='wifi'>WiFi</option><option value='ethernet'>Ethernet</option><option value='modem'>Modem Cellular</option></select></div>
+   <div id='wifi-settings' style='display:none'>
+      <label class='lbl' for='wifi_ssid'>WiFi SSID</label><input type='text' id='wifi_ssid' name='wifi_ssid' placeholder='Your_WiFi_Network'>
+      <label class='lbl' for='wifi_password'>WiFi Password</label><input type='password' id='wifi_password' name='wifi_password' placeholder='WiFi Password'>
+   </div>
+   <div id='modem-settings'>
+      <label class='lbl' for='modem_type'>Modem Type</label><select id='modem_type' name='modem_type'><option value='sim800l'>SIM800L</option><option value='sim7600ce'>SIM7600CE</option><option value='quectel_ec25k'>Quectel EC25-K</option></select>
+      <label class='lbl' for='apn'>APN</label><input type='text' id='apn' name='apn' placeholder='APN provider'>
+   </div>
+   <div id='ethernet-settings' style='display:none'>
+      <label class='lbl' for='eth_mac'>Ethernet MAC</label><input type='text' id='eth_mac' name='eth_mac' placeholder='AA:BB:CC:DD:EE:FF'>
+      <label class='lbl' for='eth_ip'>Static IP</label><input type='text' id='eth_ip' name='eth_ip' placeholder='192.168.1.50'>
+      <label class='lbl' for='eth_gateway'>Gateway IP</label><input type='text' id='eth_gateway' name='eth_gateway' placeholder='192.168.1.1'>
+      <label class='lbl' for='eth_netmask'>Netmask</label><input type='text' id='eth_netmask' name='eth_netmask' placeholder='255.255.255.0'>
+   </div>
+ </div>
+</fieldset>
+<fieldset><legend>IEC 60870-5-104</legend>
+ <div class='grid'>
+    <div>
+       <label class='lbl' for='iec_common_addr'>Common Address</label>
+       <input type='number' id='iec_common_addr' name='iec_common_addr' placeholder='1' min='0' max='65535'>
+    </div>
+    <div>
+       <label class='lbl' for='iec_k'>K (Send Window)</label>
+       <input type='number' id='iec_k' name='iec_k' placeholder='12' min='1' max='255'>
+       <div class='muted'>Prototype.</div>
+    </div>
+    <div>
+       <label class='lbl' for='iec_w'>W (Recv Window)</label>
+       <input type='number' id='iec_w' name='iec_w' placeholder='8' min='1' max='255'>
+       <div class='muted'>Window penerimaan (baru UI).</div>
+    </div>
+ </div>
+</fieldset>
+<fieldset><legend>Main Features</legend>
+ <div class='toggles' id='mainFeatures'>
+   <div class='toggle-card'><span>GFD</span><label class='switch'><input type='checkbox' id='feat_gfd'><span class='slider'></span></label></div>
+   <div class='toggle-card'><span>Supply</span><label class='switch'><input type='checkbox' id='feat_supply'><span class='slider'></span></label></div>
+   <div class='toggle-card'><span>CB 1</span><label class='switch'><input type='checkbox' id='feat_cb1'><span class='slider'></span></label></div>
+   <div class='toggle-card'><span>CB 2</span><label class='switch'><input type='checkbox' id='feat_cb2'><span class='slider'></span></label></div>
+   <div class='toggle-card'><span>CB 3</span><label class='switch'><input type='checkbox' id='feat_cb3'><span class='slider'></span></label></div>
+ </div>
+ <div id='ioa-main' style='margin-top:10px'></div>
+</fieldset>
+<fieldset><legend>Extended Features</legend>
+ <div class='toggles' id='extFeatures'>
+   <div class='toggle-card'><span>Door</span><label class='switch'><input type='checkbox' id='feat_door'><span class='slider'></span></label></div>
+   <div class='toggle-card'><span>Temperature</span><label class='switch'><input type='checkbox' id='feat_temp'><span class='slider'></span></label></div>
+   <div class='toggle-card'><span>Humidity</span><label class='switch'><input type='checkbox' id='feat_humidity'><span class='slider'></span></label></div>
+   <div class='toggle-card'><span>DI 1</span><label class='switch'><input type='checkbox' id='feat_di1'><span class='slider'></span></label></div>
+   <div class='toggle-card'><span>DI 2</span><label class='switch'><input type='checkbox' id='feat_di2'><span class='slider'></span></label></div>
+   <div class='toggle-card'><span>DI 3</span><label class='switch'><input type='checkbox' id='feat_di3'><span class='slider'></span></label></div>
+   <div class='toggle-card'><span>DI 4</span><label class='switch'><input type='checkbox' id='feat_di4'><span class='slider'></span></label></div>
+   <div class='toggle-card'><span>DI 5</span><label class='switch'><input type='checkbox' id='feat_di5'><span class='slider'></span></label></div>
+   <div class='toggle-card'><span>DO 1</span><label class='switch'><input type='checkbox' id='feat_do1'><span class='slider'></span></label></div>
+   <div class='toggle-card'><span>DO 2</span><label class='switch'><input type='checkbox' id='feat_do2'><span class='slider'></span></label></div>
+ </div>
+ <div id='ioa-ext' style='margin-top:10px'></div>
+</fieldset>
+<fieldset><legend>Modbus</legend>
+ <div class='toggle-card' style='max-width:220px'><span>Enable Modbus</span><label class='switch'><input type='checkbox' id='feat_modbus'><span class='slider'></span></label></div>
+ <div style='margin-top:10px' class='grid' id='modbus-core'>
+   <div>
+     <label class='lbl' for='modbus_mode'>Mode</label>
+     <select id='modbus_mode' name='modbus_mode'>
+       <option value='rtu'>RTU</option>
+       <option value='tcp'>TCP</option>
+     </select>
+   </div>
+   <div>
+     <label class='lbl' for='modbus_baud'>Baud</label>
+     <select id='modbus_baud' name='modbus_baud'>
+       <option>9600</option><option>19200</option><option selected>115200</option>
+     </select>
+   </div>
+   <div>
+     <label class='lbl' for='modbus_parity'>Parity</label>
+     <select id='modbus_parity' name='modbus_parity'>
+       <option value='N'>None</option><option value='E'>Even</option><option value='O'>Odd</option>
+     </select>
+   </div>
+   <div>
+     <label class='lbl' for='modbus_poll_ms'>Global Poll (ms)</label>
+     <input type='number' id='modbus_poll_ms' name='modbus_poll_ms' placeholder='1000' min='50'>
+   </div>
+ </div>
+ <div id='modbus-slaves-section' style='margin-top:14px'>
+   <div style='display:flex;align-items:center;gap:10px;margin-bottom:8px'><strong style='font-size:13px'>Slaves & Registers</strong><button type='button' id='add-modbus-slave'>Add Slave</button></div>
+   <div id='modbus-slaves'></div>
+ </div>
+</fieldset>
+<p class='muted' style='margin-top:6px'>Set fitur & IOA. Modbus daftar dinamis + param inti.</p>
+ </div>
+ <div id='ioa-dynamic' style='margin-top:28px'></div>
+ <div class='save-bar' style='display:flex;gap:12px;align-items:center'>
+  <button type='button' id='btnRestart' style='background:#d9534f'>Restart RTU</button>
+  <button type='submit'>Save Configuration</button>
+</div></form></section>
+<div id='status' class='status'></div>
+</main><footer>GOES &copy; 2025</footer>
+<script>
+// ===== PROTOTYPE MODE - MOCK DATA & LOCAL STORAGE =====
+const PROTOTYPE_MODE = true;
+
+// Mock API responses
+const MOCK_STATUS = {
+  uptime: 1234,
+  rtu_time: (function(){const d=new Date();return d.getFullYear()+ '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0') + '.' + String(d.getMilliseconds()).padStart(3,'0');})(),
+  comm_method: 'wifi',
+  wifi_ssid: 'GOES_Network',
+  wifi_rssi: -45,
+  heap_free: 150000,
+  main_task_stack_free_words: 2048,
+  comm_task_stack_free_words: 1024,
+  iec104_task_stack_free_words: 1024,
+  hal_task_stack_free_words: 1024,
+  iec104_tx: 42,
+  iec104_rx: 38,
+  iec104_last_ms: 1500,
+  iec104_connected: true,
+  heartbeat_ms: 30000,
+  rev: 'proto-v1.0'
+};
+
+const MOCK_CONFIG = {
+  device: {
+    comm_method: 'wifi',
+    wifi_ssid: 'GOES_Network',
+    wifi_password: 'password123',
+    apn: 'internet',
+    modem_type: 'sim7600ce',
+    eth_mac: '',
+    eth_ip: '',
+    soe_buffer: 64,
+    iec_common_addr: 1,
+    iec_k: 12,
+    iec_w: 8,
+    modbus_mode: 'rtu',
+    modbus_baud: 9600,
+    modbus_parity: 'none',
+    modbus_poll_ms: 1000,
+    time_sync_s: 3600,
+    heartbeat_s: 30,
+    time_source: 'ntp',
+    feat_gfd: 1,
+    feat_supply: 1,
+    feat_door: 0,
+    feat_temp: 1,
+    feat_humidity: 1,
+    feat_cb1: 1,
+    feat_cb2: 1,
+    feat_cb3: 0,
+    feat_modbus: 1,
+    feat_di1: 1,
+    feat_di2: 1,
+    feat_di3: 0,
+    feat_di4: 0,
+    feat_di5: 0,
+    feat_do1: 1,
+    feat_do2: 1,
+    feat_soe: 1
+  },
+  ioa: {
+    di_gfd: 1001,
+    di_supply_status: 1002,
+    remote_cb_1: 2001,
+    status_cb_1: 3001,
+    command_cb_1: 4001,
+    remote_cb_2: 2002,
+    status_cb_2: 3002,
+    command_cb_2: 4002,
+    ai_temperature: 5001,
+    ai_humidity: 5002,
+    di1: 1011,
+    di2: 1012,
+    do1: 6001,
+    do2: 6002,
+    modbus_list: [
+      {name: 'Voltage', ioa: 7001},
+      {name: 'Current', ioa: 7002}
+    ]
+  }
+};
+
+const MOCK_LOGS = {
+  lines: [
+    '[SYSTEM][T+123456] GOES RTU Started',
+    '[WiFi][T+123500] Connected to network',
+    '[IEC104][T+123600] Connection established',
+    '[HAL][T+123700] All sensors initialized',
+    '[MODBUS][T+123800] Slave devices detected',
+    '[COMM][T+123900] Communication active'
+  ]
+};
+
+// Prototype API mock functions
+function mockFetch(url, options = {}) {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      console.log('Mock API call:', url, options);
+      
+      if (url.includes('/api/status')) {
+        resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_STATUS)
+        });
+      } else if (url.includes('/api/config2') || url.includes('/api/config')) {
+        resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_CONFIG)
+        });
+      } else if (url.includes('/api/logs')) {
+        resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_LOGS)
+        });
+      } else if (url.includes('/api/config/device') && options.method === 'POST') {
+        // Save to localStorage
+        const formData = new URLSearchParams(options.body);
+        const config = Object.fromEntries(formData);
+        localStorage.setItem('prototype_device_config', JSON.stringify(config));
+        resolve({
+          ok: true,
+          text: () => Promise.resolve('Configuration saved (prototype mode)')
+        });
+      } else if (url.includes('/api/config/ioa') && options.method === 'POST') {
+        // Save to localStorage  
+        const config = JSON.parse(options.body || '{}');
+        localStorage.setItem('prototype_ioa_config', JSON.stringify(config));
+        resolve({
+          ok: true,
+          text: () => Promise.resolve('IOA Configuration saved (prototype mode)')
+        });
+      } else {
+        resolve({
+          ok: true,
+          text: () => Promise.resolve('Mock response')
+        });
+      }
+    }, 200); // Simulate network delay
+  });
+}
+
+// Override fetch in prototype mode
+if (PROTOTYPE_MODE) {
+  window.fetch = mockFetch;
+}
+
+// ===== ORIGINAL GOES WEB UI CODE =====
+let lastStatus=null,initialRev=null,expectingRestart=false,pollIntervalMs=5000;let logTimer=null;let soeTimer=null;let currentIoa={};
+document.addEventListener('DOMContentLoaded',()=>{
+  console.log('DOMContentLoaded fired');
+  
+  loadConfig();
+  
+  const commMethod = byId('comm_method');
+  if(commMethod) {
+    commMethod.addEventListener('change',toggleCommSections);
+    commMethod.addEventListener('change',saveConfigState); // Save when comm method changes
+    console.log('comm_method change listener added');
+  }
+  
+  const deviceForm = byId('device-form');
+  if(deviceForm) {
+    deviceForm.addEventListener('submit',onUnifiedSubmit);
+    console.log('device-form submit listener added');
+  } else {
+    console.error('device-form not found!');
+  }
+  
+  startStatusPolling();
+  initLogs();
+  initSOE();
+  featureListeners();
+  // Save initial state
+  saveConfigState();
+  
+  // Save state when form changes
+  document.getElementById('device-form').addEventListener('change', saveConfigState);
+  setupDynamicButtons();
+  
+  console.log('All event listeners initialized');
+});
+function saveConfigState() {
+  const featureConfig = {};
+  ['feat_gfd','feat_supply','feat_door','feat_temp','feat_humidity','feat_cb1','feat_cb2','feat_cb3','feat_modbus','feat_di1','feat_di2','feat_di3','feat_di4','feat_di5','feat_do1','feat_do2','feat_soe'].forEach(id => {
+    const el = byId(id);
+    if (el) {
+      featureConfig[id] = el.checked;
+    }
+  });
+  
+  // Also save communication settings
+  featureConfig.comm_method = byId('comm_method').value;
+  featureConfig.modem_type = byId('modem_type').value;
+  featureConfig.wifi_ssid = byId('wifi_ssid').value;
+  featureConfig.eth_mac = byId('eth_mac').value;
+  featureConfig.eth_ip = byId('eth_ip').value;
+  featureConfig.eth_gateway = byId('eth_gateway').value;
+  featureConfig.eth_netmask = byId('eth_netmask').value;
+  
+  localStorage.setItem('goesConfigState', JSON.stringify(featureConfig));
+}
+
+function featureListeners(){['feat_gfd','feat_supply','feat_door','feat_temp','feat_humidity','feat_cb1','feat_cb2','feat_cb3','feat_modbus','feat_di1','feat_di2','feat_di3','feat_di4','feat_di5','feat_do1','feat_do2'].forEach(id=>{const el=byId(id);if(el)el.addEventListener('change',()=>{renderGroupIoa();toggleModbusVisibility();applyAutoDisableIOA();saveConfigState();});});}
+function setupDynamicButtons(){const am=byId('add-modbus');if(am)am.addEventListener('click',()=>addListRow('modbus'));const ams=byId('add-modbus-slave');if(ams)ams.addEventListener('click',()=>addModbusSlaveRowNew());}
+function initLogs(){
+  const b=byId('btnRefreshLogs');
+  if(b) b.addEventListener('click',loadLogs);
+  
+  const a=byId('autoLogs');
+  if(a) a.addEventListener('change',()=>{
+    if(a.checked && byId('log_enable')?.checked){
+      scheduleLogs();
+    } else if(logTimer){
+      clearTimeout(logTimer);
+    }
+  });
+  
+  const e=byId('log_enable');
+  if(e) e.addEventListener('change',()=>{
+    if(!e.checked){
+      if(logTimer) clearTimeout(logTimer);
+      const box=byId('logBox');
+      if(box) box.textContent='Logs disabled';
+    } else if(byId('autoLogs')?.checked){
+      scheduleLogs();
+      loadLogs();
+    }
+  });
+  
+  const s=byId('autoScrollLogs');
+  if(s && !s.hasAttribute('data-initialized')){
+    s.setAttribute('data-initialized','true');
+  }
+  
+  if(e?.checked) {
+    scheduleLogs();
+    loadLogs();
+  }
+}
+function scheduleLogs(){
+  if(logTimer) clearTimeout(logTimer);
+  const a=byId('autoLogs');
+  const e=byId('log_enable');
+  if(!a || !a.checked || !e || !e.checked) return;
+  logTimer=setTimeout(()=>{
+    loadLogs();
+    scheduleLogs();
+  },2000);
+} 
+function loadLogs(){
+  const e=byId('log_enable');
+  if(!e || !e.checked) return;
+  
+  fetch('/api/logs')
+    .then(r=>r.json())
+    .then(j=>{
+      const box=byId('logBox');
+      if(!box) return;
+      
+      const wasAtBottom = box.scrollTop >= (box.scrollHeight - box.clientHeight - 5);
+      
+      box.dataset.raw=(j.lines||[]).join('\n');
+      box.textContent=box.dataset.raw;
+      filterLogBox();
+      
+      const autoScroll=byId('autoScrollLogs');
+      if(autoScroll?.checked && (wasAtBottom || !box.textContent.trim())) {
+        setTimeout(()=>{
+          box.scrollTop = box.scrollHeight;
+        }, 50);
+      }
+    })
+    .catch(e=>{
+      console.warn('Failed to load logs:', e);
+    });
+}
+document.addEventListener('DOMContentLoaded',()=>{
+ const btnSet=byId('btnSetLogCap');if(btnSet)btnSet.addEventListener('click',()=>{const v=parseInt(byId('logCap').value,10);if(isNaN(v)){showStatus('Isi log cap',true);return;}fetch('/api/logs/resize',{method:'POST',body:new URLSearchParams({cap:String(v)})}).then(r=>r.text()).then(t=>showStatus(t,/resized/i.test(t)?false:true));});
+ const btnClr=byId('btnClearLogs');if(btnClr)btnClr.addEventListener('click',()=>{fetch('/api/logs/clear',{method:'POST'}).then(r=>r.text()).then(t=>{showStatus(t,false);loadLogs();});});
+});
+function initSOE(){const r=byId('btnRefreshSoe');if(r)r.addEventListener('click',loadSOE);const c=byId('btnClearSoe');if(c)c.addEventListener('click',()=>{fetch('/api/soe/clear',{method:'POST'}).then(r=>r.text()).then(t=>{showStatus(t,false);loadSOE();});});const a=byId('autoSoe');if(a)a.addEventListener('change',()=>{if(a.checked){scheduleSOE();}else if(soeTimer)clearTimeout(soeTimer);});scheduleSOE();loadSOE();}
+function scheduleSOE(){if(soeTimer)clearTimeout(soeTimer);const a=byId('autoSoe');if(!a||!a.checked)return;soeTimer=setTimeout(()=>{loadSOE();scheduleSOE();},3000);}
+function loadSOE(){fetch('/api/soe').then(r=>r.json()).then(j=>{const body=byId('soeBody');const sum=byId('soeSummary');if(sum)sum.textContent=`${j.count||0}/${j.cap||0} overflow=${j.overflow?'Y':'N'}`;if(body){body.innerHTML='';(j.events||[]).slice(-200).reverse().forEach(ev=>{const tr=document.createElement('tr');tr.innerHTML=`<td style='padding:2px 4px;border-bottom:1px solid #eee'>${ev.seq}</td><td style='padding:2px 4px;border-bottom:1px solid #eee'>${ev.ms}</td><td style='padding:2px 4px;border-bottom:1px solid #eee'>${ev.ioa}</td><td style='padding:2px 4px;border-bottom:1px solid #eee'>${ev.v}</td>`;body.appendChild(tr);});}}).catch(()=>{});}
+function loadConfig(){
+  console.log('=== LOADING CONFIG START ===');
+  console.log('Timestamp:', new Date().toISOString());
+  
+  if (PROTOTYPE_MODE) {
+    // Load from localStorage if available
+    const savedDevice = localStorage.getItem('prototype_device_config');
+    const savedIoa = localStorage.getItem('prototype_ioa_config');
+    
+    if (savedDevice || savedIoa) {
+      console.log('Loading from localStorage');
+      const deviceConfig = savedDevice ? JSON.parse(savedDevice) : MOCK_CONFIG.device;
+      const ioaConfig = savedIoa ? JSON.parse(savedIoa) : MOCK_CONFIG.ioa;
+      
+      applyDeviceConfig(deviceConfig);
+      applyIoaConfig(ioaConfig);
+      console.log('=== LOADING CONFIG SUCCESS (localStorage) ===');
+      return;
+    }
+  }
+  
+  fetch('/api/config2')
+    .then(r=>{
+      console.log('Config2 response:', r.status, r.statusText);
+      if(!r.ok) throw new Error('Config2 failed'); 
+      return r.json();
+    })
+    .then(d=>{
+      console.log('Config2 loaded successfully:', d);
+      const dv=(d.device&&typeof d.device==='object')?d.device:parseJSON(d.device||'{}');
+      const io=(d.ioa&&typeof d.ioa==='object')?d.ioa:parseJSON(d.ioa||'{}');
+      applyDeviceConfig(dv);
+      applyIoaConfig(io);
+      console.log('=== LOADING CONFIG SUCCESS ===');
+    })
+    .catch(e=>{
+      console.warn('Config2 failed, trying config1:', e);
+      fetch('/api/config')
+        .then(r=>r.json())
+        .then(d=>{
+          console.log('Config1 loaded:', d);
+          const dv=(d.device&&typeof d.device==='object')?d.device:parseJSON(d.device||'{}');
+          const io=(d.ioa&&typeof d.ioa==='object')?d.ioa:parseJSON(d.ioa||'{}');
+          applyDeviceConfig(dv);
+          applyIoaConfig(io);
+        })
+        .catch(e2=>{
+          console.error('Both config endpoints failed:', e2);
+        });
+    });
+}
+function parseJSON(s){try{return JSON.parse(s);}catch(e){return {};}}
+function applyDeviceConfig(dv){setVal('comm_method',dv.comm_method||'wifi');['apn','modem_type','eth_mac','eth_ip','eth_gateway','eth_netmask','wifi_ssid','wifi_password','soe_buffer','iec_common_addr','iec_k','iec_w','modbus_mode','modbus_baud','modbus_parity','modbus_poll_ms','time_sync_s','heartbeat_s','time_source'].forEach(k=>setVal(k,dv[k]||''));const feats=['feat_gfd','feat_supply','feat_door','feat_temp','feat_humidity','feat_cb1','feat_cb2','feat_cb3','feat_modbus','feat_di1','feat_di2','feat_di3','feat_di4','feat_di5','feat_do1','feat_do2','feat_soe'];feats.forEach(id=>setToggle(id,dv[id]!==0));if(!byId('comm_method').getAttribute('data-original'))byId('comm_method').setAttribute('data-original',dv.comm_method||'wifi');toggleCommSections();maybeHideEthernet(dv);renderGroupIoa();}
+function maybeHideEthernet(dv){if(dv.feat_ethernet===0){const opt=[...byId('comm_method').options].find(o=>o.value==='ethernet');if(opt)opt.style.display='none';if(byId('comm_method').value==='ethernet'){byId('comm_method').value='modem';}}}
+function applyIoaConfig(io){currentIoa=io||{}; if((currentIoa.mb_reg1||currentIoa.mb_reg2) && (!currentIoa.modbus_list||!currentIoa.modbus_list.length)){
+    currentIoa.modbus_list=[]; if(currentIoa.mb_reg1)currentIoa.modbus_list.push({name:'Reg1',ioa:currentIoa.mb_reg1}); if(currentIoa.mb_reg2)currentIoa.modbus_list.push({name:'Reg2',ioa:currentIoa.mb_reg2});
+ }
+ renderGroupIoa();toggleModbusVisibility();renderDynamicLists();applyAutoDisableIOA();}
+function onUnifiedSubmit(e){
+  console.log('=== onUnifiedSubmit called ===');
+  console.log('Event:', e);
+  console.log('Event type:', e.type);
+  console.log('Target:', e.target);
+  
+  e.preventDefault();
+  console.log('preventDefault() called');
+  
+  applyAutoDisableIOA();
+  const dev=formToJSON(e.target);
+  ['feat_gfd','feat_supply','feat_door','feat_temp','feat_humidity','feat_cb1','feat_cb2','feat_cb3','feat_modbus','feat_di1','feat_di2','feat_di3','feat_di4','feat_di5','feat_do1','feat_do2','feat_soe'].forEach(id=>dev[id]=byId(id).checked?1:0);
+  const oldMethod=byId('comm_method').getAttribute('data-original')||'';
+  if(oldMethod&&oldMethod!==dev.comm_method)expectingRestart=true;
+  const ioa={};
+  document.querySelectorAll('[data-ioa]')?.forEach(inp=>{
+    const k=inp.name;
+    const v=inp.value.trim();
+    if(v!==''&&!isNaN(v))ioa[k]=parseInt(v,10);
+  });
+  if(byId('feat_modbus')?.checked){
+    const regs=collectModbusRegisters();
+    if(regs.length)ioa.modbus_list=regs;
+    const slaves=collectModbusSlaves();
+    if(slaves.length)ioa.modbus_slaves=slaves;
+  }
+  console.log('Saving device config:', dev);
+  console.log('Saving IOA config:', ioa);
+  showNotif('Saving configuration...',false);
+  saveConfig('/api/config/device',dev,(ok1,msg1)=>{
+    if(!ok1){
+      console.error('Device save failed:', msg1);
+      showNotif('Device save failed: '+msg1,true);
+      return;
+    }
+    saveConfig('/api/config/ioa',ioa,(ok2,msg2)=>{
+      if(!ok2){
+        console.error('IOA save failed:', msg2);
+        showNotif('IOA save failed: '+msg2,true);
+        return;
+      }
+      console.log('Configuration saved successfully');
+      showNotif('Configuration saved'+(expectingRestart?' (restarting...)':'' )+'.',false);
+    });
+  });
+}
+function byId(id){return document.getElementById(id);}function setVal(id,v){const el=byId(id);if(el)el.value=v;}function setToggle(id,on){const el=byId(id);if(el)el.checked=!!on;}
+function toggleCommSections(){
+  const method = byId('comm_method').value;
+  byId('wifi-settings').style.display = method === 'wifi' ? 'block' : 'none';
+  byId('modem-settings').style.display = method === 'modem' ? 'block' : 'none';
+  byId('ethernet-settings').style.display = method === 'ethernet' ? 'block' : 'none';
+}
+function formToJSON(f){return Object.fromEntries(new FormData(f).entries());}
+function saveConfig(url,data,cb){fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+   .then(r=>r.text().then(t=>({ok:r.ok,text:t})))
+   .then(o=>{if(/Restarting/i.test(o.text))expectingRestart=true; if(cb)cb(o.ok,o.text);})
+   .catch(e=>{if(cb)cb(false,String(e));});}
+document.addEventListener('DOMContentLoaded',()=>{const br=byId('btnRestart');if(br)br.addEventListener('click',()=>{if(!confirm('Yakin restart RTU sekarang?'))return;showStatus('Restarting...');fetch('/api/restart',{method:'POST'}).then(r=>r.text()).then(t=>{showStatus(t||'Restart issued');expectingRestart=true;}).catch(()=>showStatus('Gagal kirim restart',true));});});
+function showStatus(msg,err){showNotif(msg,err?'error':'info');}
+function startStatusPolling(){pollStatus();setInterval(pollStatus,pollIntervalMs);} 
+function pollStatus(){
+  console.log('=== POLLING STATUS START ===');
+  console.log('Timestamp:', new Date().toISOString());
+  console.log('Making fetch request to /api/status...');
+  
+  fetch('/api/status')
+    .then(r=>{
+      console.log('Response received:', r.status, r.statusText);
+      console.log('Response OK:', r.ok);
+      if(!r.ok) {
+        console.error('Response not OK:', r.status, r.statusText);
+        throw new Error('HTTP ' + r.status);
+      }
+      return r.json();
+    })
+    .then(s=>{
+      console.log('JSON parsed successfully');
+      console.log('Status data:', s);
+      console.log('Data keys:', Object.keys(s));
+  updateLiveStatus(s);
+  updateRtuClockBarConfig(s.rtu_time, s.time_source || 'RTC');
+      if(lastStatus){
+        if(s.rev!==lastStatus.rev){
+          console.log('Revision changed:', lastStatus.rev, '->', s.rev);
+          showStatus('Revision: '+s.rev,false);
+        }
+        if(lastStatus.uptime>=5 && s.uptime+3<lastStatus.uptime){
+          console.log('Device restart detected');
+          showStatus('Device restarted (reason: '+(s.reset_reason||'?')+')',false);
+        } 
+      }
+      lastStatus=s;
+      if(initialRev===null){
+        console.log('Setting initial revision:', s.rev);
+        initialRev=s.rev;
+      }
+      console.log('=== POLLING STATUS SUCCESS ===');
+    })
+    .catch(e=>{
+      console.error('=== POLLING STATUS ERROR ===');
+      console.error('Error type:', typeof e);
+      console.error('Error details:', e);
+      console.error('Error message:', e.message);
+      console.error('Error stack:', e.stack);
+      setOffline();
+    });
+} 
+function updateLiveStatus(s){
+  const panel=byId('liveStatusPanel');
+  panel.classList.remove('offline');
+  if (PROTOTYPE_MODE) {
+    panel.classList.add('prototype');
+  }
+  byId('ls_conn').textContent='Online';
+  byId('ls_comm').textContent=s.comm_method||'-';
+  byId('ls_uptime').textContent=formatUptime(s.uptime||0);
+  byId('ls_heap').textContent=s.heap_free||'-';
+  byId('ls_stack').textContent=s.main_task_stack_free_words||'-';
+  byId('ls_stack_comm').textContent=s.comm_task_stack_free_words||'-';
+  byId('ls_stack_iec104').textContent=s.iec104_task_stack_free_words||'-';
+  byId('ls_stack_hal').textContent=s.hal_task_stack_free_words||'-';
+  byId('ls_rev').textContent=s.rev||'-';
+  if(s.iec104_tx!==undefined) byId('ls_iec104_tx').textContent=s.iec104_tx;
+  if(s.iec104_rx!==undefined) byId('ls_iec104_rx').textContent=s.iec104_rx;
+  if(s.iec104_last_ms!==undefined) byId('ls_iec104_last').textContent=s.iec104_last_ms;
+  if(expectingRestart&&lastStatus&&s.uptime<8){
+    showNotif('Restart complete (Comm='+s.comm_method+')',false);
+    expectingRestart=false;
+  }
+  if(s.iec104_connected!==undefined){
+    let el=document.getElementById('iec104_link');
+    if(!el){
+      const span=document.createElement('span');
+      span.id='iec104_link';
+      panel.appendChild(span);
+      el=span;
+    }
+    el.textContent='| IEC104:'+(s.iec104_connected?'ON':'OFF');
+  }
+  if(s.heartbeat_ms!==undefined){
+    let el=document.getElementById('hb_status');
+    if(!el){
+      const span=document.createElement('span');
+      span.id='hb_status';
+      panel.appendChild(span);
+      el=span;
+    }
+    el.textContent='| HB(ms):'+s.heartbeat_ms;
+  }
+}
+function setOffline(){const p=byId('liveStatusPanel');p.classList.add('offline');['ls_conn','ls_comm','ls_uptime','ls_rev','ls_heap','ls_stack','ls_stack_comm','ls_stack_iec104','ls_stack_hal'].forEach(id=>{const el=byId(id);if(el)el.textContent='-';});byId('ls_conn').textContent='Offline';}
+function updateRtuClockBarConfig(ts,source){
+  const full=byId('rtu_time_full'); if(full) full.textContent = ts || '--';
+  const src=byId('rtu_time_source'); if(src) src.textContent = 'Source: '+(source||'RTC');
+  const upd=byId('rtu_time_updated'); if(upd) upd.textContent = new Date().toLocaleTimeString();
+}
+function formatUptime(sec){const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return (h>0?h+'h ':'')+(m>0||h>0?m+'m ':'')+s+'s';}
+function renderGroupIoa(){ const feat=id=>byId(id)&&byId(id).checked;const main=byId('ioa-main');const ext=byId('ioa-ext');if(!main||!ext)return;const add=(arr,label,key)=>{const stored=currentIoa[key];const val=(stored===0)?0:(stored||'');arr.push(`<div class='ioa-row'><label>${label}</label><input data-ioa name='${key}' type='number' value='${val}' placeholder='IOA'></div>`);};
+ let m=[];if(feat('feat_gfd'))add(m,'GFD','di_gfd');if(feat('feat_supply'))add(m,'Supply','di_supply_status');
+ if(feat('feat_cb1')){add(m,'Remote 1','remote_cb_1');add(m,'CB1 Status','status_cb_1');add(m,'CB1 Command','command_cb_1');}
+ if(feat('feat_cb2')){add(m,'Remote 2','remote_cb_2');add(m,'CB2 Status','status_cb_2');add(m,'CB2 Command','command_cb_2');}
+ if(feat('feat_cb3')){add(m,'Remote 3','remote_cb_3');add(m,'CB3 Status','status_cb_3');add(m,'CB3 Command','command_cb_3');}
+ main.innerHTML=m.join('');
+ let e=[];if(feat('feat_door'))add(e,'Door','di_door');if(feat('feat_temp'))add(e,'Temperature','ai_temperature');if(feat('feat_humidity'))add(e,'Humidity','ai_humidity');
+ if(feat('feat_di1'))add(e,'DI 1','di1');if(feat('feat_di2'))add(e,'DI 2','di2');if(feat('feat_di3'))add(e,'DI 3','di3');if(feat('feat_di4'))add(e,'DI 4','di4');if(feat('feat_di5'))add(e,'DI 5','di5');
+ if(feat('feat_do1'))add(e,'DO 1','do1');if(feat('feat_do2'))add(e,'DO 2','do2');
+ ext.innerHTML=e.join('');}
+function toggleModbusVisibility(){const enabled=byId('feat_modbus')?.checked;const core=byId('modbus-core');const slaves=byId('modbus-slaves-section');if(core)core.style.display=enabled?'grid':'none';if(slaves)slaves.style.display=enabled?'block':'none';}
+function addListRow(type,obj){if(type==='modbus'){const container=byId('modbus-items');if(!container)return;const nameVal=obj&&obj.name?obj.name:'';const ioaVal=obj&&obj.ioa?obj.ioa:'';const div=document.createElement('div');div.className='modbus-row';div.style.cssText='margin:3px 0;padding:4px 6px;border:1px solid #ccc;border-radius:6px;display:flex;gap:6px;align-items:center;background:#fff';div.innerHTML=`<input type='text' placeholder='Name' value='${nameVal}' class='modbus-name' style='width:140px'> <input type='number' placeholder='IOA' value='${ioaVal}' class='modbus-ioa' style='width:90px'> <button type='button' class='mb-reg-del'>✕</button>`;container.appendChild(div);div.querySelector('.mb-reg-del').addEventListener('click',()=>div.remove());}}
+function collectModbusRegisters(){return [...document.querySelectorAll('#modbus-items .modbus-row')].map(r=>{const name=r.querySelector('.modbus-name').value.trim();const ioa=parseInt(r.querySelector('.modbus-ioa').value.trim(),10);return (name&&!isNaN(ioa))?{name,ioa}:null;}).filter(x=>x);} 
+function addModbusSlaveRowNew(obj){
+  const container=byId('modbus-slaves');
+  if(!container)return;
+  
+  const nameVal=obj&&obj.name?obj.name:'';
+  const idVal=obj&&obj.id?obj.id:'';
+  const pollVal=obj&&obj.poll?obj.poll:'';
+  const addrVal=obj&&obj.address?obj.address:'';
+  const registers = obj&&obj.registers?obj.registers:[];
+  
+  const div=document.createElement('div');
+  div.className='modbus-slave-group';
+  div.style.cssText='margin:8px 0;padding:8px;border:2px solid #ddd;border-radius:8px;background:#f9f9f9';
+  
+  div.innerHTML=`
+    <div class='slave-header' style='display:flex;gap:6px;align-items:center;margin-bottom:8px;padding:4px;background:#fff;border-radius:6px;border:1px solid #ccc'>
+      <input type='number' min='1' max='247' placeholder='Slave ID' value='${idVal}' class='mb-slave-id' style='width:80px'> 
+      <input type='text' placeholder='Device Name' value='${nameVal}' class='mb-slave-name' style='width:140px'> 
+      <input type='number' placeholder='Poll ms' value='${pollVal}' class='mb-slave-poll' style='width:80px'> 
+      <button type='button' class='mb-slave-del' style='background:#dc3545;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer'>Delete Slave</button>
+    </div>
+    <div class='registers-section'>
+      <div style='display:flex;align-items:center;gap:8px;margin-bottom:6px'>
+        <strong style='font-size:12px;color:#666'>Registers:</strong>
+        <button type='button' class='add-register' style='background:#28a745;color:#fff;border:none;padding:3px 8px;border-radius:4px;font-size:11px;cursor:pointer'>Add Register</button>
+      </div>
+      <div class='registers-container'></div>
+    </div>
+  `;
+  
+  container.appendChild(div);
+  
+  // Add existing registers
+  if(registers.length > 0) {
+    registers.forEach(reg => addRegisterToSlave(div, reg));
+  }
+  
+  // Event handlers
+  div.querySelector('.mb-slave-del').addEventListener('click',()=>div.remove());
+  div.querySelector('.add-register').addEventListener('click',()=>addRegisterToSlave(div));
+}
+
+function addRegisterToSlave(slaveDiv, regObj = null) {
+  const container = slaveDiv.querySelector('.registers-container');
+  const nameVal = regObj&&regObj.name ? regObj.name : '';
+  const typeVal = regObj&&regObj.type ? regObj.type : 'holding';
+  const addrVal = regObj&&regObj.address ? regObj.address : '';
+  
+  const regDiv = document.createElement('div');
+  regDiv.className='register-row';
+  regDiv.style.cssText='margin:3px 0;padding:4px 6px;border:1px solid #bbb;border-radius:4px;display:flex;gap:4px;align-items:center;background:#fff;font-size:12px';
+  
+  regDiv.innerHTML=`
+    <input type='text' placeholder='Register Name' value='${nameVal}' class='reg-name' style='width:120px;font-size:12px;padding:3px'>
+    <select class='reg-type' style='width:90px;font-size:12px;padding:3px'>
+      <option value='holding' ${typeVal==='holding'?'selected':''}>Holding</option>
+      <option value='input' ${typeVal==='input'?'selected':''}>Input</option>
+      <option value='coil' ${typeVal==='coil'?'selected':''}>Coil</option>
+      <option value='discrete' ${typeVal==='discrete'?'selected':''}>Discrete</option>
+    </select>
+    <input type='number' placeholder='Address' value='${addrVal}' class='reg-addr' style='width:80px;font-size:12px;padding:3px'>
+    <button type='button' class='reg-del' style='background:#dc3545;color:#fff;border:none;padding:2px 6px;border-radius:3px;font-size:10px;cursor:pointer'>✕</button>
+  `;
+  
+  container.appendChild(regDiv);
+  regDiv.querySelector('.reg-del').addEventListener('click',()=>regDiv.remove());
+}
+function collectModbusSlaves(){
+  return [...document.querySelectorAll('#modbus-slaves .modbus-slave-group')].map(slaveDiv=>{
+    const id=parseInt(slaveDiv.querySelector('.mb-slave-id').value,10);
+    const name=slaveDiv.querySelector('.mb-slave-name').value.trim();
+    const poll=parseInt(slaveDiv.querySelector('.mb-slave-poll').value,10);
+    
+    // Collect registers for this slave
+    const registers = [...slaveDiv.querySelectorAll('.register-row')].map(regDiv => {
+      const regName = regDiv.querySelector('.reg-name').value.trim();
+      const regType = regDiv.querySelector('.reg-type').value;
+      const regAddr = parseInt(regDiv.querySelector('.reg-addr').value, 10);
+      
+      if(regName && !isNaN(regAddr)) {
+        return {name: regName, type: regType, address: regAddr};
+      }
+      return null;
+    }).filter(x => x);
+    
+    if(!isNaN(id) && name){
+      return {id, name, poll: !isNaN(poll) ? poll : 1000, registers};
+    }
+    return null;
+  }).filter(x=>x);
+}
+function renderDynamicLists(){if(currentIoa.modbus_slaves&&Array.isArray(currentIoa.modbus_slaves)){currentIoa.modbus_slaves.forEach(o=>addModbusSlaveRowNew(o));}if(currentIoa.modbus_list&&Array.isArray(currentIoa.modbus_list)){currentIoa.modbus_list.forEach(o=>addListRow('modbus',o));}}
+function toggleModbusVisibility(){const enabled=byId('feat_modbus')?.checked;const core=byId('modbus-core');const slaves=byId('modbus-slaves-section');const regs=byId('modbus-registers-section');if(core)core.style.display=enabled?'grid':'none';if(slaves)slaves.style.display=enabled?'block':'none';if(regs)regs.style.display=enabled?'block':'none';}
+function applyAutoDisableIOA(){
+  document.querySelectorAll('[data-ioa]').forEach(inp=>{
+    const inputName = inp.name;
+    let isFeatureEnabled = false;
+    
+    // Define specific mapping for CB features
+    const featureMapping = {
+      'remote_cb_1': 'feat_cb1',
+      'status_cb_1': 'feat_cb1', 
+      'command_cb_1': 'feat_cb1',
+      'remote_cb_2': 'feat_cb2',
+      'status_cb_2': 'feat_cb2',
+      'command_cb_2': 'feat_cb2', 
+      'remote_cb_3': 'feat_cb3',
+      'status_cb_3': 'feat_cb3',
+      'command_cb_3': 'feat_cb3',
+      'di_gfd': 'feat_gfd',
+      'di_supply_status': 'feat_supply',
+      'di_door': 'feat_door',
+      'ai_temperature': 'feat_temp',
+      'ai_humidity': 'feat_humidity',
+      'di1': 'feat_di1',
+      'di2': 'feat_di2', 
+      'di3': 'feat_di3',
+      'di4': 'feat_di4',
+      'di5': 'feat_di5',
+      'do1': 'feat_do1',
+      'do2': 'feat_do2'
+    };
+    
+    // Check if there's a direct mapping
+    const mappedFeature = featureMapping[inputName];
+    if(mappedFeature) {
+      const toggle = byId(mappedFeature);
+      isFeatureEnabled = toggle && toggle.checked;
+    } else {
+      // Fallback to old logic for other cases
+      const featName = inputName.replace(/^(di_|ai_|do_|status_|command_|remote_)/,'');
+      const toggles = document.querySelectorAll('input[type="checkbox"]');
+      toggles.forEach(t=>{
+        if(t.checked && (t.id.includes(featName) || featName.includes(t.id.replace('feat_','')))) {
+          isFeatureEnabled = true;
+        }
+      });
+    }
+    
+    inp.disabled = !isFeatureEnabled;
+    if(!isFeatureEnabled) inp.value = '';
+  });
+}
+function showNotif(msg,isError){
+  const n=byId('notif');
+  if(!n) return;
+  
+  // Clear any existing timeout
+  if(n.hideTimeout) {
+    clearTimeout(n.hideTimeout);
+    delete n.hideTimeout;
+  }
+  
+  n.textContent=msg;
+  
+  // Determine notification type
+  let type = 'info';
+  if(isError === true) type = 'error';
+  else if(isError === false) type = 'success';
+  else if(typeof isError === 'string') type = isError;
+  
+  n.className='notif-bar ' + type;
+  n.style.display='block';
+  
+  // Auto hide after 5 seconds for success, 8 seconds for error
+  const hideDelay = (type === 'error') ? 8000 : 5000;
+  n.hideTimeout = setTimeout(()=>{
+    n.style.display='none';
+    delete n.hideTimeout;
+  }, hideDelay);
+  
+  console.log('Notification shown:', msg, 'Type:', type);
+}
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM loaded, initializing...');
+  const addSlaveBtn = byId('add-modbus-slave');
+  if (addSlaveBtn) {
+    addSlaveBtn.addEventListener('click', addModbusSlaveRowNew);
+    console.log('Add slave button listener attached');
+  }
+  
+  const formEl = byId('device-form');
+  if (formEl) {
+    formEl.addEventListener('submit', (e) => {
+      e.preventDefault();
+      console.log('Form submit intercepted');
+      onUnifiedSubmit(e);
+    });
+  }
+  
+  const restartBtn = byId('btnRestart');
+  if (restartBtn) {
+    restartBtn.addEventListener('click', () => {
+      if (!confirm('Yakin restart RTU sekarang?')) return;
+      console.log('Restart button clicked');
+      showNotif('Restarting...');
+      fetch('/api/restart', {method: 'POST'})
+        .then(r => r.text())
+        .then(t => {
+          console.log('Restart response:', t);
+          showNotif(t || 'Restart issued');
+        })
+        .catch(e => {
+          console.error('Restart error:', e);
+          showNotif('Gagal kirim restart', true);
+        });
+    });
+    console.log('Restart button listener attached');
+  }
+  
+  // Feature toggle listeners
+  ['feat_gfd','feat_supply','feat_door','feat_temp','feat_humidity','feat_cb1','feat_cb2','feat_cb3','feat_modbus','feat_di1','feat_di2','feat_di3','feat_di4','feat_di5','feat_do1','feat_do2'].forEach(id=>{
+    const el=byId(id);
+    if(el) {
+      el.addEventListener('change', () => {
+        console.log(`Feature ${id} changed to:`, el.checked);
+        renderGroupIoa();
+        toggleModbusVisibility();
+        applyAutoDisableIOA();
+      });
+    }
+  });
+  
+  console.log('All event listeners attached');
+});
+function filterLogBox() {
+  const box = byId('logBox');
+  if (!box || !box.dataset.raw) return;
+  
+  const wasAtBottom = box.scrollTop >= (box.scrollHeight - box.clientHeight - 5);
+  
+  const rawLines = box.dataset.raw.split('\n');
+  const activeFilters = [];
+  document.querySelectorAll('.logCat:checked').forEach(cb => {
+    const category = cb.id.replace('log_cat_', '').toUpperCase();
+    activeFilters.push(category);
+  });
+  const categoryPatterns = {
+    'SYSTEM': ['[SYSTEM]', '[SYS]', 'BOOT', 'RESET', 'RESTART', 'STARTUP'],
+    'IEC104': ['[IEC104]', '[IEC]', 'ASDU', 'APDU', 'TESTFR', 'STARTDT', 'STOPDT'],
+    'MODBUS': ['[MODBUS]', '[MB]', 'RTU', 'TCP', 'SLAVE', 'REGISTER'],
+    'SOE': ['[SOE]', 'EVENT', 'SEQUENCE'],
+    'COMM': ['[COMM]', '[COMMUNICATION]', 'CONNECT', 'DISCONNECT', 'SEND', 'RECV'],
+    'ETHERNET': ['[ETH]', '[ETHERNET]', 'MAC', 'IP', 'DHCP', 'LINK'],
+    'MODEM': ['[MODEM]', '[GSM]', '[LTE]', 'SIM800', 'SIM7600', 'QUECTEL', 'APN', 'SIGNAL'],
+    'HAL': ['[HAL]', '[HARDWARE]', 'GPIO', 'ADC', 'PWM', 'I2C', 'SPI', 'UART'],
+    'WEB': ['[WEB]', '[HTTP]', '[SERVER]', 'GET', 'POST', 'WEBSOCKET'],
+    'CONFIG': ['[CONFIG]', '[CFG]', 'SAVE', 'LOAD', 'NVRAM', 'EEPROM'],
+    'TASK': ['[TASK]', '[THREAD]', 'STACK', 'HEAP', 'MEMORY'],
+    'TIME': ['[TIME]', '[RTC]', '[NTP]', 'SYNC', 'TIMESTAMP'],
+    'ERROR': ['[ERROR]', '[ERR]', 'FAIL', 'TIMEOUT', 'EXCEPTION', 'CRITICAL'],
+    'DEBUG': ['[DEBUG]', '[DBG]', 'TRACE', 'VERBOSE'],
+    'WIFI': ['[WIFI]', '[WLAN]', 'SSID', 'PASSWORD', 'CONNECTED', 'SCAN'],
+    'NTP': ['[NTP]', 'TIME_SYNC', 'SNTP', 'TIMESERVER']
+  };
+  let filteredLines = rawLines;
+  if (activeFilters.length > 0) {
+    filteredLines = rawLines.filter(line => {
+      return activeFilters.some(category => {
+        const patterns = categoryPatterns[category] || [];
+        return patterns.some(pattern => 
+          line.toUpperCase().includes(pattern)
+        );
+      });
+    });
+  }
+  box.textContent = filteredLines.join('\n');
+  
+  // Auto scroll if enabled and was at bottom
+  const autoScroll=byId('autoScrollLogs');
+  if(autoScroll?.checked && wasAtBottom) {
+    setTimeout(()=>{
+      box.scrollTop = box.scrollHeight;
+    }, 10);
+  }
+  
+  const totalLines = rawLines.length;
+  const filteredCount = filteredLines.length;
+  let statusEl = byId('logFilterStatus');
+  if (!statusEl) {
+    statusEl = document.createElement('div');
+    statusEl.id = 'logFilterStatus';
+    statusEl.style.cssText = 'font-size:10px;color:#666;margin-top:4px';
+    box.parentNode.appendChild(statusEl);
+  }
+  statusEl.textContent = `Showing ${filteredCount}/${totalLines} lines (${activeFilters.length} filters active)`;
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const applyBtn = byId('btnApplyLogFilter');
+  if (applyBtn) {
+    applyBtn.addEventListener('click', filterLogBox);
+  }
+  document.querySelectorAll('.logCat').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (byId('autoLogs')?.checked) {
+        filterLogBox();
+      }
+    });
+  });
+  const filterContainer = document.querySelector('.logCat').closest('div');
+  if (filterContainer) {
+    const selectAllBtn = document.createElement('button');
+    selectAllBtn.textContent = 'All';
+    selectAllBtn.type = 'button';
+    selectAllBtn.style.cssText = 'font-size:10px;padding:2px 6px;margin-left:8px';
+    selectAllBtn.addEventListener('click', () => {
+      document.querySelectorAll('.logCat').forEach(cb => cb.checked = true);
+      filterLogBox();
+    });
+    const selectNoneBtn = document.createElement('button');
+    selectNoneBtn.textContent = 'None';
+    selectNoneBtn.type = 'button';
+    selectNoneBtn.style.cssText = 'font-size:10px;padding:2px 6px;margin-left:4px';
+    selectNoneBtn.addEventListener('click', () => {
+      document.querySelectorAll('.logCat').forEach(cb => cb.checked = false);
+      filterLogBox();
+    });
+    filterContainer.appendChild(selectAllBtn);
+    filterContainer.appendChild(selectNoneBtn);
+  }
+  const presetButtons = {
+    'btnFilterComm': ['COMM', 'ETHERNET', 'MODEM', 'WIFI'],
+    'btnFilterErrors': ['ERROR'],
+    'btnFilterProtocol': ['IEC104', 'MODBUS'],
+    'btnFilterSystem': ['SYSTEM', 'HAL', 'TASK', 'CONFIG']
+  };
+  Object.entries(presetButtons).forEach(([btnId, categories]) => {
+    const btn = byId(btnId);
+    if (btn) {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.logCat').forEach(cb => cb.checked = false);
+        categories.forEach(cat => {
+          const checkbox = byId(`log_cat_${cat.toLowerCase()}`);
+          if (checkbox) checkbox.checked = true;
+        });
+        filterLogBox();
+      });
+    }
+  });
+});
+</script>
+</body></html>
