@@ -1,0 +1,1468 @@
+<!DOCTYPE html><html lang='en'>
+<head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1.0'>
+<title>GOES Configurator - Monitoring</title>
+<style>
+ :root { --accent:#0078d4; --accent-hover:#0062ad; --bg:#f2f5f9; --panel:#fff; --border:#d4dbe4; }
+ body{font-family:Arial,Helvetica,sans-serif;margin:0;background:var(--bg);color:#222}
+ header{background:#1a3d6d;color:#fff;padding:12px 22px;position:sticky;top:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+ .notif-bar{position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:1100;background:#fff4c2;color:#664d00;font-size:14px;font-weight:600;padding:12px 24px;display:none;box-shadow:0 4px 12px rgba(0,0,0,.25);border-radius:8px;border:1px solid #e6d700;max-width:90%;text-align:center;animation:slideInDown 0.3s ease-out}
+ @keyframes slideInDown{from{opacity:0;transform:translate(-50%,-20px)}to{opacity:1;transform:translate(-50%,0)}}
+ h1{margin:0;font-size:19px;letter-spacing:.5px;font-weight:600}
+ main{padding:18px;max-width:1220px;margin:0 auto}
+ h2{margin:28px 0 12px;font-size:17px;color:#1a3d6d}
+ fieldset{border:1px solid var(--border);margin:0 0 18px;padding:14px 16px;border-radius:10px;background:var(--panel)}
+ legend{padding:0 6px;font-weight:600;font-size:13px;color:#1a3d6d}
+ label.lbl{display:block;margin:0 0 4px;font-weight:600;font-size:11px;letter-spacing:.3px;text-transform:uppercase;color:#425b76}
+ input[type=text],input[type=number],select{width:100%;padding:8px 10px;border:1px solid #b8c4d1;border-radius:6px;font-size:14px;background:#fff;box-sizing:border-box}
+ button{background:var(--accent);color:#fff;padding:10px 20px;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.15);transition:.18s}
+ button:hover{background:var(--accent-hover)}
+ .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+ .two-col{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px}
+ .muted{font-size:11px;color:#667}
+ .status{display:none}
+ #liveStatusPanel span { color: #333; }
+ #liveStatusPanel strong, #liveStatusPanel code { color: #000; font-weight: 600; }
+ #liveStatusPanel.offline{background:#fdeeee;border-color:#f2b8b5}
+ #liveStatusPanel.prototype{background:#fff3cd;border:1px solid #ffeaa7;color:#856404}
+ .prototype-badge{background:#f39c12;color:#fff;font-size:10px;padding:3px 8px;border-radius:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+ footer{padding:14px 24px;text-align:center;font-size:11px;color:#678;background:#f0f4f8;margin-top:40px;border-top:1px solid #d5dce3}
+ pre#logBox{background:#111;color:#0f0;padding:10px;height:260px;overflow:auto;font-size:11px;border-radius:6px;border:1px solid #333}
+ .toggles{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+ .toggle-card{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#ffffff;border:1px solid #e1e6ec;border-radius:8px;font-size:11px;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+ .switch{position:relative;display:inline-block;width:42px;height:22px}
+ .switch input{opacity:0;width:0;height:0}
+ .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#b5bcc5;transition:.3s;border-radius:34px}
+ .slider:before{position:absolute;content:"";height:18px;width:18px;left:2px;top:2px;background:#fff;transition:.3s;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+ .switch input:checked + .slider{background:var(--accent)}
+ .switch input:checked + .slider:before{transform:translateX(20px)}
+ .group-label{grid-column:1/-1;margin-top:8px;font-size:9.5px;font-weight:700;letter-spacing:.7px;color:#555;text-transform:uppercase}
+ .save-bar{padding:10px 0;margin-top:18px;display:flex;gap:12px;align-items:center}
+ .tag{background:#1a3d6d;color:#fff;font-size:10px;padding:3px 7px;border-radius:11px;margin-left:10px;letter-spacing:.5px}
+ .notif-bar.error{background:#ff4757;color:#fff;border-color:#ff3838}
+ .notif-bar.info{background:#2ed573;color:#fff;border-color:#20bf6b}
+ .notif-bar.success{background:#2ed573;color:#fff;border-color:#20bf6b}
+ section{background:var(--panel);border-radius:10px;padding:18px;margin-bottom:18px;box-shadow:0 2px 8px rgba(0,0,0,0.1);border:1px solid var(--border)}
+.switch{position:relative;display:inline-block;width:40px;height:20px}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;transition:.4s;border-radius:20px}
+.slider:before{position:absolute;content:"";height:16px;width:16px;left:2px;bottom:2px;background:white;transition:.4s;border-radius:50%}
+input:checked+.slider{background:#4CAF50}
+input:checked+.slider:before{transform:translateX(20px)}
+button{background:#1a3d6d;color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:12px;margin:2px}
+button:hover{background:#2c5282}
+button:disabled{background:#ccc;cursor:not-allowed}
+input,select,textarea{padding:6px;border:1px solid #ccc;border-radius:4px;font-size:12px}
+.muted{color:#666;font-size:11px}
+.status{margin:10px 0;padding:8px;border-radius:4px;display:none}
+.status.success{background:#d4edda;color:#155724;border:1px solid #c3e6cb}
+.status.error{background:#f8d7da;color:#721c24;border:1px solid #f5c6cb}
+#logBox{background:#000;color:#0f0;padding:10px;border-radius:4px;max-height:400px;overflow:auto;font-family:monospace;font-size:11px;white-space:pre-wrap;word-wrap:break-word}
+#statusGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-top:15px}
+.status-card{background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:12px}
+.status-card h4{margin:0 0 8px 0;color:#1a3d6d;font-size:14px}
+.status-value{font-weight:bold;font-size:16px;margin:4px 0}
+.status-value.on{color:#28a745}
+.status-value.off{color:#dc3545}
+.status-value.fault{color:#ffc107}
+footer{text-align:center;padding:20px;color:#666;font-size:12px}
+</style>
+</head><body>
+<header><h1>GOES RTU Monitoring</h1><span class='tag'>v2.x-proto</span>
+<nav style='margin-left:auto'>
+  <a href='config.html' style='color:#ccc;text-decoration:none;margin-right:15px;font-weight:600'>Configuration</a>
+  <a href='monitor.html' style='color:#fff;text-decoration:none;font-weight:600'>Monitoring</a>
+</nav>
+</header>
+<div id='liveStatusPanel' style='display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:8px 22px;background:#e9f2ff;border-bottom:1px solid #c4d9f2;font-size:11.5px'>
+ <span class='prototype-badge'>Prototype Mode</span>
+ <span id='ls_conn'>Polling...</span>
+ <span>| Comm: <strong id='ls_comm'>-</strong></span>
+ <span>| IEC104 Tx:<span id='ls_iec104_tx'>-</span></span>
+ <span>| IEC104 Rx:<span id='ls_iec104_rx'>-</span></span>
+ <span>| IEC104 Last(ms):<span id='ls_iec104_last'>-</span></span>
+ <span>| Uptime: <span id='ls_uptime'>-</span></span>
+ <span>| Heap: <span id='ls_heap'>-</span></span>
+ <span>| Stack(main): <span id='ls_stack'>-</span></span>
+ <span>| Stack(comm): <span id='ls_stack_comm'>-</span></span>
+ <span>| Stack(iec104): <span id='ls_stack_iec104'>-</span></span>
+ <span>| Stack(hal): <span id='ls_stack_hal'>-</span></span>
+ <span>| Rev: <code id='ls_rev'>-</code></span>
+</div>
+ <!-- Prominent RTU Clock Bar -->
+ <div id='rtuClockBar' style='display:flex;align-items:center;gap:14px;padding:10px 22px;background:#102a46;color:#fff;font-size:14px;font-weight:600;border-bottom:2px solid #0d2238'>
+   <div style='font-size:12px;letter-spacing:.5px;text-transform:uppercase;opacity:.85'>RTU Clock</div>
+   <div style='font-family:monospace;font-size:16px' id='rtu_time_full'>--</div>
+   <div style='font-size:11px;background:#1f4d80;padding:3px 8px;border-radius:12px' id='rtu_time_source'>Source: -</div>
+   <div style='margin-left:auto;font-size:11px;opacity:.8'>Updated <span id='rtu_time_updated'>-</span></div>
+ </div>
+<div id='notif' class='notif-bar'></div><main>
+
+<section>
+ <h2>System Status</h2>
+ <div style='display:flex;gap:15px;align-items:center;margin-bottom:15px'>
+   <button type='button' id='btnRefreshStatus'>Refresh Status</button>
+   <button type='button' id='btnRefreshConfig'>Reload Config</button>
+   <div style='display:flex;align-items:center;gap:8px;background:#f8f9fa;padding:8px 12px;border-radius:8px;border:1px solid #dee2e6'>
+     <span style='font-size:12px;font-weight:600'>Auto Refresh:</span>
+     <label class='switch'><input type='checkbox' id='autoStatus' checked><span class='slider'></span></label>
+     <span style='font-size:11px;color:#666'>(5s)</span>
+   </div>
+   <div style='font-size:11px;color:#666;margin-left:auto'>
+     Config loaded: <span id='configStatus'>Unknown</span>
+   </div>
+ </div>
+ <div id='statusGrid'></div>
+</section>
+
+ <!-- Main Features Section -->
+ <section id='main-features-section'>
+   <h2>Main Features (IEC104)</h2>
+   <div style='overflow:auto'>
+     <table style='width:100%;border-collapse:collapse;font-size:12px'>
+       <thead style='background:#1a3d6d;color:#fff;position:sticky;top:0'>
+         <tr>
+           <th style='padding:6px 8px;text-align:left;border:1px solid #ccc'>Feature</th>
+           <th style='padding:6px 8px;text-align:center;border:1px solid #ccc'>IOA</th>
+           <th style='padding:6px 8px;text-align:center;border:1px solid #ccc'>Data Type</th>
+           <th style='padding:6px 8px;text-align:center;border:1px solid #ccc'>Value</th>
+         </tr>
+       </thead>
+       <tbody id='mainFeaturesBody'></tbody>
+     </table>
+   </div>
+   <div class='muted' id='mainFeaturesEmpty' style='display:none;margin-top:6px'>No main features enabled in configuration.</div>
+ </section>
+
+ <!-- Extended Features Section -->
+ <section id='extended-features-section'>
+   <h2>Extended Features (IEC104)</h2>
+   <div style='overflow:auto'>
+     <table style='width:100%;border-collapse:collapse;font-size:12px'>
+       <thead style='background:#1a3d6d;color:#fff;position:sticky;top:0'>
+         <tr>
+           <th style='padding:6px 8px;text-align:left;border:1px solid #ccc'>Feature</th>
+           <th style='padding:6px 8px;text-align:center;border:1px solid #ccc'>IOA</th>
+           <th style='padding:6px 8px;text-align:center;border:1px solid #ccc'>Data Type</th>
+           <th style='padding:6px 8px;text-align:center;border:1px solid #ccc'>Value</th>
+         </tr>
+       </thead>
+       <tbody id='extFeaturesBody'></tbody>
+     </table>
+   </div>
+   <div class='muted' id='extFeaturesEmpty' style='display:none;margin-top:6px'>No extended features enabled in configuration.</div>
+ </section>
+
+ <!-- Modbus Values Section -->
+ <section id='modbus-values-section'>
+   <h2>Modbus Register Values</h2>
+   <div style='overflow:auto;max-height:400px'>
+     <table style='width:100%;border-collapse:collapse;font-size:12px'>
+       <thead style='background:#1a3d6d;color:#fff;position:sticky;top:0'>
+         <tr>
+           <th style='padding:6px 8px;text-align:left;border:1px solid #ccc'>Slave</th>
+           <th style='padding:6px 8px;text-align:left;border:1px solid #ccc'>Register</th>
+           <th style='padding:6px 8px;text-align:center;border:1px solid #ccc'>Address</th>
+           <th style='padding:6px 8px;text-align:center;border:1px solid #ccc'>Data Type</th>
+           <th style='padding:6px 8px;text-align:center;border:1px solid #ccc'>Value</th>
+         </tr>
+       </thead>
+       <tbody id='modbusValuesBody'></tbody>
+     </table>
+   </div>
+   <div class='muted' id='modbusValuesEmpty' style='display:none;margin-top:6px'>No Modbus registers configured.</div>
+ </section>
+
+<section id='soe-section'>
+ <h2>SOE (Sequence of Events)</h2>
+ <div style='display:flex;gap:10px;align-items:center;margin-bottom:8px'>
+    <button type='button' id='btnRefreshSoe'>Refresh SOE</button>
+    <button type='button' id='btnClearSoe'>Clear SOE</button>
+    <label style='font-size:12px'><input type='checkbox' id='autoSoe' checked> Auto (3s)</label>
+    <span id='soeSummary' class='muted'>-</span>
+ </div>
+ <div style='max-height:240px;overflow:auto;border:1px solid #ccc;background:#fff;border-radius:6px'>
+   <table style='width:100%;border-collapse:collapse;font-size:11.5px'>
+      <thead style='position:sticky;top:0;background:#1a3d6d;color:#fff'>
+         <tr><th style='text-align:left;padding:4px 6px'>Seq</th><th style='text-align:left;padding:4px 6px'>Millis</th><th style='text-align:left;padding:4px 6px'>IOA</th><th style='text-align:left;padding:4px 6px'>Val</th></tr>
+      </thead>
+      <tbody id='soeBody'></tbody>
+   </table>
+ </div>
+</section>
+
+<section style='padding:12px' id='logs-section'>
+ <h2>Logs</h2>
+ <div style='display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:8px'>
+  <button type='button' id='btnRefreshLogs'>Refresh</button>
+  
+  <div style='display:flex;align-items:center;gap:8px;background:#f8f9fa;padding:8px 12px;border-radius:8px;border:1px solid #dee2e6'>
+    <span style='font-size:12px;font-weight:600'>Enable Logs:</span>
+    <label class='switch'><input type='checkbox' id='log_enable' checked><span class='slider'></span></label>
+  </div>
+  
+  <div style='display:flex;align-items:center;gap:8px;background:#f8f9fa;padding:8px 12px;border-radius:8px;border:1px solid #dee2e6'>
+    <span style='font-size:12px;font-weight:600'>Auto Refresh:</span>
+    <label class='switch'><input type='checkbox' id='autoLogs' checked><span class='slider'></span></label>
+    <span style='font-size:11px;color:#666'>(2s)</span>
+  </div>
+  
+  <div style='display:flex;align-items:center;gap:8px;background:#f8f9fa;padding:8px 12px;border-radius:8px;border:1px solid #dee2e6'>
+    <span style='font-size:12px;font-weight:600'>Auto Scroll:</span>
+    <label class='switch'><input type='checkbox' id='autoScrollLogs' checked><span class='slider'></span></label>
+  </div>
+  <div style='display:flex;flex-wrap:wrap;gap:6px;font-size:11px;background:#fff;padding:6px 8px;border:1px solid #ccc;border-radius:6px'>
+    <label><input type='checkbox' class='logCat' id='log_cat_system' checked> System</label>
+    <label><input type='checkbox' class='logCat' id='log_cat_iec104' checked> IEC104</label>
+    <label><input type='checkbox' class='logCat' id='log_cat_modbus' checked> Modbus</label>
+    <label><input type='checkbox' class='logCat' id='log_cat_soe' checked> SOE</label>
+    <label><input type='checkbox' class='logCat' id='log_cat_comm' checked> Comm</label>
+    <label><input type='checkbox' class='logCat' id='log_cat_ethernet' checked> Ethernet</label>
+    <label><input type='checkbox' class='logCat' id='log_cat_modem' checked> Modem</label>
+    <label><input type='checkbox' class='logCat' id='log_cat_hal' checked> HAL</label>
+    <label><input type='checkbox' class='logCat' id='log_cat_web' checked> Web</label>
+    <label><input type='checkbox' class='logCat' id='log_cat_config' checked> Config</label>
+    <label><input type='checkbox' class='logCat' id='log_cat_task' checked> Task</label>
+    <label><input type='checkbox' class='logCat' id='log_cat_time' checked> Time</label>
+    <label><input type='checkbox' class='logCat' id='log_cat_error' checked> Error</label>
+    <label><input type='checkbox' class='logCat' id='log_cat_debug' checked> Debug</label>
+    <label><input type='checkbox' class='logCat' id='log_cat_wifi' checked> WiFi</label>
+    <label><input type='checkbox' class='logCat' id='log_cat_ntp' checked> NTP</label>
+  </div>
+  <input type='number' id='logCap' placeholder='Lines' style='width:80px'>
+  <button type='button' id='btnSetLogCap'>Set Cap</button>
+  <button type='button' id='btnClearLogs'>Clear Logs</button>
+  <button type='button' id='btnApplyLogFilter'>Apply Filters</button>
+  <div style='margin-left:12px;display:flex;gap:4px;align-items:center'>
+    <label style='font-size:10px;color:#666'>Presets:</label>
+    <button type='button' id='btnFilterComm' style='font-size:10px;padding:2px 6px'>Comm Only</button>
+    <button type='button' id='btnFilterErrors' style='font-size:10px;padding:2px 6px'>Errors Only</button>
+    <button type='button' id='btnFilterProtocol' style='font-size:10px;padding:2px 6px'>Protocols</button>
+    <button type='button' id='btnFilterSystem' style='font-size:10px;padding:2px 6px'>System</button>
+  </div>
+ </div>
+ <pre id='logBox'></pre>
+ <div class='muted' style='margin-top:4px'>Filter berbasis prefix baris misal [IEC104],[MODBUS],[SOE]. Backend belum kirim kategorisasi eksplisit.</div>
+</section>
+
+</main><footer>GOES &copy; 2025</footer>
+
+<script>
+// Mock API System for Prototype
+class MockAPI {
+  constructor() {
+    this.logs = this.generateMockLogs();
+    this.soe = this.generateMockSOE();
+    this.loadSavedState(); // Load config first (includes IOA config)
+    this.status = this.generateMockStatus(); // Then generate status based on config
+  }
+
+  generateMockLogs() {
+    const categories = ['SYSTEM', 'IEC104', 'MODBUS', 'SOE', 'COMM', 'ETHERNET', 'MODEM', 'HAL', 'WEB', 'CONFIG', 'TASK', 'TIME', 'ERROR', 'DEBUG', 'WIFI', 'NTP'];
+    const logs = [];
+    const now = Date.now();
+    
+    for(let i = 0; i < 50; i++) {
+      const timestamp = new Date(now - (50-i) * 5000).toISOString().substring(11, 23);
+      const category = categories[Math.floor(Math.random() * categories.length)];
+      const messages = {
+        'SYSTEM': ['System initialized', 'Watchdog reset', 'Boot complete', 'Memory check OK'],
+        'IEC104': ['Client connected', 'Frame received', 'General interrogation', 'Connection timeout'],
+        'MODBUS': ['TCP server started', 'Register read', 'Exception response', 'Slave response'],
+        'SOE': ['Event logged', 'Buffer full', 'Timestamp sync', 'Sequence increment'],
+        'COMM': ['Interface up', 'Data received', 'Transmission error', 'Link status'],
+        'ERROR': ['Configuration error', 'Memory allocation failed', 'Timeout occurred', 'Invalid parameter']
+      };
+      const message = messages[category] ? messages[category][Math.floor(Math.random() * messages[category].length)] : 'Generic message';
+      logs.push(`[${timestamp}] [${category}] ${message}`);
+    }
+    return logs;
+  }
+
+  generateMockSOE() {
+    const soe = [];
+    const now = Date.now();
+    
+    for(let i = 0; i < 20; i++) {
+      soe.push({
+        seq: i + 1,
+        millis: now - (20-i) * 10000,
+        ioa: 1000 + Math.floor(Math.random() * 100),
+        val: Math.random() > 0.5 ? 1 : 0
+      });
+    }
+    return soe;
+  }
+
+  generateMockStatus() {
+    // Get communication method from config
+    const commMethod = this.config.comm_method || 'wifi';
+    const now = new Date();
+    const fullTs = now.getFullYear()+ '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0')+
+      ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0') + '.' + String(now.getMilliseconds()).padStart(3,'0');
+    const src = (this.config.time_source || 'RTC');
+    const mockStatus = {
+      system: {
+        uptime: '2d 5h 30m',
+        memory_free: '45.2 KB',
+        cpu_usage: '12%',
+  temperature: '42°C',
+  rtu_time: fullTs,
+  rtu_time_source: src
+      },
+      esp32: {
+        chip_model: 'ESP32-D0WD-V3',
+        chip_revision: '3.0',
+        flash_size: '4MB',
+        core_count: '2',
+        cpu_freq: 240,
+        heap_free: Math.floor(Math.random() * 50000 + 200000) + ' bytes',
+        stack_free: Math.floor(Math.random() * 5000 + 15000) + ' bytes',
+        reset_reason: 'Power-on Reset'
+      },
+      communication: this.generateCommStatus(commMethod),
+      protocols: {
+        iec104_status: Math.random() > 0.3 ? 'Connected' : 'LRU Fail', // 70% success rate
+        iec104_clients: Math.random() > 0.3 ? Math.floor(Math.random() * 3) + 1 : 0,
+        iec104_last_contact: Math.random() > 0.3 ? Math.floor(Math.random() * 30) + 's ago' : 'Never',
+        iec104_common_addr: this.config.iec_common_addr || '1',
+        iec104_k: this.config.iec_k || '12',
+        iec104_w: this.config.iec_w || '8',
+        iec104_frames_sent: Math.floor(Math.random() * 10000),
+        iec104_frames_received: Math.floor(Math.random() * 8000),
+        modbus_status: 'Master Active',
+        modbus_baud: this.config.modbus_baud || '9600',
+        modbus_parity: this.config.modbus_parity || 'None',
+        modbus_poll_ms: this.config.modbus_poll_ms || '1000',
+        modbus_polls_success: Math.floor(Math.random() * 15) + 85, // 85-99% success
+        modbus_last_poll: Math.floor(Math.random() * 5) + 1 + 's ago',
+        modbus_slaves: this.generateModbusSlaveStatus()
+      },
+      main_features: this.generateMainFeatures(),
+      extended_features: this.generateExtendedFeatures(),
+      modbus_values: this.generateModbusValues()
+    };
+    
+    return mockStatus;
+  }
+
+  // NEW: unified status regeneration & UI push for prototype mode
+  updateStatus(){
+    this.status = this.generateMockStatus();
+    try {
+      displayStatus(this.status);
+      updateLiveStatusPanel();
+  updateRtuClockBar();
+  renderFeatureTables(this.status);
+    } catch(e){
+      console.warn('updateStatus UI error', e);
+    }
+  }
+
+  generateMainFeatures() {
+    const features = {};
+    console.log('=== generateMainFeatures called ===');
+    console.log('this.config:', this.config);
+    
+    if (this.config.feat_gfd) {
+      features.gfd = Math.random() > 0.2 ? 1 : 0; // Single Point: 0 or 1
+      console.log('Added gfd:', features.gfd);
+    }
+    if (this.config.feat_supply) {
+      features.supply = Math.floor(Math.random() * 4); // Double Point: 0,1,2,3
+      console.log('Added supply:', features.supply);
+    }
+    if (this.config.feat_cb1) {
+      features.cb_1 = Math.floor(Math.random() * 4); // Double Point: 0,1,2,3
+      console.log('Added cb_1:', features.cb_1);
+    }
+    if (this.config.feat_cb2) {
+      features.cb_2 = Math.floor(Math.random() * 4); // Double Point: 0,1,2,3
+      console.log('Added cb_2:', features.cb_2);
+    }
+    if (this.config.feat_cb3) {
+      features.cb_3 = Math.floor(Math.random() * 4); // Double Point: 0,1,2,3
+      console.log('Added cb_3:', features.cb_3);
+    }
+    
+    console.log('generateMainFeatures result:', features);
+    return features;
+  }
+
+  generateExtendedFeatures() {
+    const features = {};
+    console.log('=== generateExtendedFeatures called ===');
+    console.log('this.config:', this.config);
+    
+    if (this.config.feat_door) {
+      features.door = Math.random() > 0.5 ? 1 : 0; // Single Point: 0 or 1
+      console.log('Added door:', features.door);
+    }
+    if (this.config.feat_temp) {
+      features.temperature_sensor = (Math.random() * 30 + 20).toFixed(1); // Measured Value: numeric only
+      console.log('Added temperature_sensor:', features.temperature_sensor);
+    }
+    if (this.config.feat_humidity) {
+      features.humidity_sensor = (Math.random() * 40 + 30).toFixed(1); // Measured Value: numeric only
+      console.log('Added humidity_sensor:', features.humidity_sensor);
+    }
+    if (this.config.feat_di1) {
+      features.di_1 = Math.random() > 0.5 ? 1 : 0; // Single Point: 0 or 1
+      console.log('Added di_1:', features.di_1);
+    }
+    if (this.config.feat_di2) {
+      features.di_2 = Math.random() > 0.5 ? 1 : 0; // Single Point: 0 or 1
+      console.log('Added di_2:', features.di_2);
+    }
+    if (this.config.feat_di3) {
+      features.di_3 = Math.random() > 0.5 ? 1 : 0; // Single Point: 0 or 1
+      console.log('Added di_3:', features.di_3);
+    }
+    if (this.config.feat_di4) {
+      features.di_4 = Math.random() > 0.5 ? 1 : 0; // Single Point: 0 or 1
+      console.log('Added di_4:', features.di_4);
+    }
+    if (this.config.feat_di5) {
+      features.di_5 = Math.random() > 0.5 ? 1 : 0; // Single Point: 0 or 1
+      console.log('Added di_5:', features.di_5);
+    }
+    
+    console.log('generateExtendedFeatures result:', features);
+    return features;
+  }
+
+  generateModbusValues() {
+    const values = {};
+    
+    // Generate values based on configured modbus slaves from both sources
+    let allSlaves = [];
+    
+    // From IOA config
+    if (this.ioaConfig && this.ioaConfig.modbus_slaves) {
+      allSlaves = allSlaves.concat(this.ioaConfig.modbus_slaves);
+    }
+    
+    // From Modbus config (if different structure)
+    if (this.modbusConfig && this.modbusConfig.slaves) {
+      allSlaves = allSlaves.concat(this.modbusConfig.slaves);
+    }
+    
+    allSlaves.forEach(slave => {
+      if (slave.registers && slave.registers.length > 0) {
+        slave.registers.forEach(register => {
+          const regKey = `${slave.name}_${register.name}`;
+          
+          // Generate realistic values based on register type
+          switch(register.type) {
+            case 'holding':
+            case 'input':
+              // Holding and Input registers: 16-bit values (0-65535)
+              values[regKey] = Math.floor(Math.random() * 65536);
+              break;
+            case 'coil':
+            case 'discrete':
+              // Coil and Discrete inputs: binary values (0 or 1)
+              values[regKey] = Math.random() > 0.5 ? 1 : 0;
+              break;
+            default:
+              // Default to holding register format
+              values[regKey] = Math.floor(Math.random() * 65536);
+          }
+        });
+      }
+    });
+    
+    return values;
+  }
+
+  generateCommStatus(method) {
+    if (!method) method = 'wifi'; // fallback default
+    
+    switch(method) {
+      case 'wifi':
+        return {
+          type: 'WiFi',
+          status: Math.random() > 0.2 ? 'Connected' : 'Disconnected',
+          ssid: this.config.wifi_ssid || 'GOES_Network',
+          rssi: Math.floor(Math.random() * 40) - 80 + ' dBm', // -40 to -80 dBm
+          ip_address: '192.168.1.' + (Math.floor(Math.random() * 200) + 50),
+          gateway: '192.168.1.1',
+          netmask: '255.255.255.0',
+          dns: '8.8.8.8',
+          channel: Math.floor(Math.random() * 11) + 1,
+          encryption: 'WPA2-PSK'
+        };
+      case 'ethernet':
+        return {
+          type: 'Ethernet',
+          status: Math.random() > 0.1 ? 'Link Up' : 'Link Down',
+          mac_address: this.config.eth_mac || '00:11:22:33:44:55',
+          speed: '100 Mbps',
+          duplex: 'Full',
+          ip_address: this.config.eth_ip || '192.168.1.' + (Math.floor(Math.random() * 200) + 50),
+          gateway: this.config.eth_gateway || '192.168.1.1',
+          netmask: this.config.eth_netmask || '255.255.255.0',
+          dns: '8.8.8.8',
+          link_status: Math.random() > 0.1 ? 'Up' : 'Down',
+          auto_negotiation: 'Enabled'
+        };
+      case 'modem':
+        const modemTypes = {
+          'sim800l': 'SIM800L',
+          'sim7600ce': 'SIM7600CE', 
+          'quectel_ec25k': 'Quectel EC25-K'
+        };
+        const modemType = this.config.modem_type || 'sim7600ce';
+        const signalStrength = Math.floor(Math.random() * 31); // 0-31 CSQ
+        return {
+          type: modemTypes[modemType] || 'Cellular Modem',
+          status: Math.random() > 0.25 ? 'Connected' : 'No Signal',
+          operator: Math.random() > 0.5 ? 'Telkomsel' : 'XL Axiata',
+          signal_strength: signalStrength,
+          signal_quality: signalStrength > 20 ? 'Excellent' : signalStrength > 15 ? 'Good' : signalStrength > 10 ? 'Fair' : 'Poor',
+          network_type: Math.random() > 0.5 ? '4G LTE' : '3G HSPA',
+          ip_address: '10.' + Math.floor(Math.random() * 255) + '.' + Math.floor(Math.random() * 255) + '.' + Math.floor(Math.random() * 255),
+          local_ip: '192.168.43.1',
+          apn: this.config.apn || 'internet',
+          imei: '86' + Math.floor(Math.random() * 1000000000000000),
+          sim_status: Math.random() > 0.1 ? 'Ready' : 'Not Inserted',
+          registration: Math.random() > 0.2 ? 'Registered' : 'Searching'
+        };
+      default:
+        return {
+          type: 'Unknown',
+          status: 'Disconnected',
+          ip_address: 'N/A'
+        };
+    }
+  }
+
+  generateModbusSlaveStatus() {
+    // Use configured slaves if available, otherwise return default
+    if (this.ioaConfig && this.ioaConfig.modbus_slaves && this.ioaConfig.modbus_slaves.length > 0) {
+      return this.ioaConfig.modbus_slaves.map(slave => {
+        const slaveStatus = this.generateSlaveStatus();
+        return {
+          id: slave.id,
+          name: slave.name || `Slave ${slave.id}`,
+          address: slave.address || 0,
+          poll_interval: slave.poll || this.config.modbus_poll_ms || 1000,
+          status: slaveStatus,
+          last_poll: Math.floor(Math.random() * 10) + 1 + 's ago',
+          error_count: Math.floor(Math.random() * 5),
+          success_rate: Math.floor(Math.random() * 15) + 85 + '%',
+          registers: slave.registers ? slave.registers.map(reg => ({
+            name: reg.name || `Register ${reg.address}`,
+            address: reg.address,
+            value: slaveStatus === 'Online' ? Math.floor(Math.random() * 1000) + 100 : 'N/A'
+          })) : []
+        };
+      });
+    } else {
+      // Default slaves if none configured - always show these
+      return [
+        { 
+          id: 1, 
+          name: 'Temperature Sensor', 
+          status: this.generateSlaveStatus(), 
+          address: 40001, 
+          poll_interval: 1000,
+          last_poll: Math.floor(Math.random() * 10) + 1 + 's ago',
+          error_count: Math.floor(Math.random() * 3),
+          success_rate: Math.floor(Math.random() * 15) + 85 + '%',
+          registers: [
+            { name: 'Temperature', address: 40001, value: (Math.random() * 50 + 20).toFixed(1) + '°C' },
+            { name: 'Humidity', address: 40002, value: (Math.random() * 40 + 40).toFixed(1) + '%' }
+          ]
+        },
+        { 
+          id: 2, 
+          name: 'Pressure Meter', 
+          status: this.generateSlaveStatus(), 
+          address: 30001, 
+          poll_interval: 2000,
+          last_poll: Math.floor(Math.random() * 15) + 1 + 's ago',
+          error_count: Math.floor(Math.random() * 2),
+          success_rate: Math.floor(Math.random() * 10) + 90 + '%',
+          registers: [
+            { name: 'Pressure', address: 30001, value: (Math.random() * 1000 + 100).toFixed(0) },
+            { name: 'Flow Rate', address: 30002, value: (Math.random() * 5000 + 500).toFixed(0) }
+          ]
+        },
+        { 
+          id: 247, 
+          name: 'Remote Terminal', 
+          status: this.generateSlaveStatus(), 
+          address: 10001, 
+          poll_interval: 5000,
+          last_poll: Math.floor(Math.random() * 30) + 1 + 's ago',
+          error_count: Math.floor(Math.random() * 5),
+          success_rate: Math.floor(Math.random() * 20) + 80 + '%',
+          registers: [
+            { name: 'Status Word', address: 10001, value: Math.floor(Math.random() * 65536) },
+            { name: 'Control Word', address: 10002, value: Math.floor(Math.random() * 65536) },
+            { name: 'Alarm Count', address: 10003, value: Math.floor(Math.random() * 10) }
+          ]
+        }
+      ];
+    }
+  }
+
+  generateSlaveStatus() {
+    const statuses = ['Online', 'Offline', 'Timeout', 'Error'];
+    const weights = [0.7, 0.15, 0.1, 0.05]; // 70% online, 15% offline, 10% timeout, 5% error
+    
+    const random = Math.random();
+    let cumulative = 0;
+    
+    for (let i = 0; i < statuses.length; i++) {
+      cumulative += weights[i];
+      if (random <= cumulative) {
+        return statuses[i];
+      }
+    }
+    return 'Online'; // fallback
+  }
+
+  loadSavedState() {
+    // Load monitor preferences
+    const saved = localStorage.getItem('goesMonitorState');
+    if (saved) {
+      const state = JSON.parse(saved);
+      if (state.autoStatus !== undefined) document.getElementById('autoStatus').checked = state.autoStatus;
+      if (state.autoSoe !== undefined) document.getElementById('autoSoe').checked = state.autoSoe;
+      if (state.autoLogs !== undefined) document.getElementById('autoLogs').checked = state.autoLogs;
+      if (state.autoScrollLogs !== undefined) document.getElementById('autoScrollLogs').checked = state.autoScrollLogs;
+      if (state.logEnable !== undefined) document.getElementById('log_enable').checked = state.logEnable;
+    }
+    
+    // Load configuration from config page
+    this.loadConfigState();
+  }
+
+  loadConfigState() {
+    const configState = localStorage.getItem('goesConfigState');
+    if (configState) {
+      const newConfig = JSON.parse(configState);
+      // Check if config has changed
+      const configChanged = JSON.stringify(this.config) !== JSON.stringify(newConfig);
+      this.config = newConfig;
+      
+      // Update config status indicator
+      const statusEl = document.getElementById('configStatus');
+      if (statusEl) {
+        statusEl.textContent = new Date().toLocaleTimeString();
+        statusEl.style.color = '#28a745';
+      }
+      
+      // If config changed, trigger update
+      if (configChanged) {
+        this.triggerConfigUpdate();
+      }
+    } else {
+      // Default config if none exists
+      this.config = {
+        comm_method: 'wifi',
+        modem_type: 'sim7600ce',
+        wifi_ssid: 'GOES_Network',
+        feat_gfd: true,
+        feat_supply: true,
+        feat_cb1: true,
+        feat_cb2: true,
+        feat_cb3: false,
+        feat_door: true,
+        feat_temp: true,
+        feat_humidity: true,
+        feat_di1: true,
+        feat_di2: false,
+        feat_di3: false,
+        feat_di4: false,
+        feat_di5: false,
+        feat_do1: true,
+        feat_do2: false
+      };
+      // Update config status indicator
+      const statusEl = document.getElementById('configStatus');
+      if (statusEl) {
+        statusEl.textContent = 'Default';
+        statusEl.style.color = '#ffc107';
+      }
+    }
+    console.log('Loaded config state:', this.config);
+    
+    // Load IOA configuration including modbus slaves
+    this.loadIOAConfig();
+  }
+
+  triggerConfigUpdate() {
+    // This method will trigger immediate update of monitoring display
+    // when configuration changes are detected
+    console.log('Configuration changed, updating monitoring...');
+    
+    // Force immediate status update
+    clearInterval(this.updateInterval);
+    if(typeof this.updateStatus === 'function'){
+      this.updateStatus();
+      // Restart regular updates (every 5s for clarity)
+      this.updateInterval = setInterval(() => this.updateStatus(), 5000);
+    }
+    
+    // Show notification
+    showNotification('Configuration updated, monitoring refreshed', 'info');
+  }
+
+  loadIOAConfig() {
+    const ioaState = localStorage.getItem('prototype_ioa_config');
+    if (ioaState) {
+      const newIOAConfig = JSON.parse(ioaState);
+      // Check if IOA config has changed
+      const ioaConfigChanged = JSON.stringify(this.ioaConfig) !== JSON.stringify(newIOAConfig);
+      this.ioaConfig = newIOAConfig;
+      
+      // If IOA/Modbus config changed, trigger update
+      if (ioaConfigChanged && this.ioaConfig) {
+        this.triggerConfigUpdate();
+      }
+    } else {
+      // Default IOA config
+      this.ioaConfig = {
+        modbus_slaves: []
+      };
+    }
+    
+    // Also load modbus slaves configuration
+    const modbusState = localStorage.getItem('modbus_slaves_config');
+    if (modbusState) {
+      const newModbusConfig = JSON.parse(modbusState);
+      // Check if Modbus config has changed
+      const modbusConfigChanged = JSON.stringify(this.modbusConfig) !== JSON.stringify(newModbusConfig);
+      this.modbusConfig = newModbusConfig;
+      
+      // If Modbus config changed, trigger update
+      if (modbusConfigChanged && this.modbusConfig) {
+        this.triggerConfigUpdate();
+      }
+    } else {
+      this.modbusConfig = { slaves: [] };
+    }
+    
+    console.log('Loaded IOA config:', this.ioaConfig);
+    console.log('Loaded Modbus config:', this.modbusConfig);
+  }
+
+  saveState() {
+    const state = {
+      autoStatus: document.getElementById('autoStatus').checked,
+      autoSoe: document.getElementById('autoSoe').checked,
+      autoLogs: document.getElementById('autoLogs').checked,
+      autoScrollLogs: document.getElementById('autoScrollLogs').checked,
+      logEnable: document.getElementById('log_enable').checked
+    };
+    localStorage.setItem('goesMonitorState', JSON.stringify(state));
+  }
+
+  // Mock API endpoints
+  async getLogs() {
+    await this.delay(200);
+    return { logs: this.logs.slice(-100) };
+  }
+
+  async getSOE() {
+    await this.delay(150);
+    return { soe: this.soe };
+  }
+
+  async getStatus() {
+    await this.delay(100);
+    // Regenerate dynamic values
+    this.status = this.generateMockStatus();
+    return this.status;
+  }
+
+  async clearLogs() {
+    await this.delay(100);
+    this.logs = [];
+    return { success: true };
+  }
+
+  async clearSOE() {
+    await this.delay(100);
+    this.soe = [];
+    return { success: true };
+  }
+
+  delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
+
+// Initialize mock API
+const api = new MockAPI();
+
+// Status Display Functions
+function displayStatus(status) {
+  console.log('displayStatus called with:', status);
+  
+  if (!status) {
+    console.error('Status is null or undefined');
+    return;
+  }
+  
+  const grid = document.getElementById('statusGrid');
+  if (!grid) {
+    console.error('Status grid not found');
+    return;
+  }
+  
+  grid.innerHTML = '';
+
+  // === SYSTEM STATUS SECTION ===
+  // Create section header for System Status
+  const systemHeader = document.createElement('h3');
+  systemHeader.textContent = 'System Status';
+  systemHeader.style.gridColumn = '1 / -1';
+  systemHeader.style.marginTop = '0';
+  systemHeader.style.marginBottom = '15px';
+  systemHeader.style.paddingBottom = '8px';
+  systemHeader.style.borderBottom = '2px solid #ddd';
+  systemHeader.style.color = '#333';
+  grid.appendChild(systemHeader);
+
+  // System Status (always shown)
+  if (status.system) {
+    const systemCard = createStatusCard('System', [
+      ['Uptime', status.system.uptime || 'Unknown'],
+      ['Free Memory', status.system.memory_free || 'Unknown'],
+      ['CPU Usage', status.system.cpu_usage || 'Unknown'],
+      ['Temperature', status.system.temperature || 'Unknown']
+    ]);
+    grid.appendChild(systemCard);
+  }
+
+  // ESP32 Monitoring
+  if (status.esp32) {
+    const esp32Items = [
+      ['Chip Model', status.esp32.chip_model || 'ESP32'],
+      ['Chip Revision', status.esp32.chip_revision || 'Unknown'],
+      ['Flash Size', status.esp32.flash_size || 'Unknown'],
+      ['Core Count', status.esp32.core_count || '2'],
+      ['CPU Frequency', (status.esp32.cpu_freq || 240) + ' MHz'],
+      ['Heap Free', status.esp32.heap_free || 'Unknown'],
+      ['Stack Free', status.esp32.stack_free || 'Unknown'],
+      ['Reset Reason', status.esp32.reset_reason || 'Unknown']
+    ];
+    
+    const esp32Card = createStatusCard('ESP32 Monitoring', esp32Items);
+    grid.appendChild(esp32Card);
+  }
+
+  // Communication Status (dynamic based on comm method)
+  if (status.communication) {
+    const commItems = [
+      ['Type', status.communication.type || 'Unknown'],
+      ['Status', status.communication.status || 'Unknown', 'comm_status'],
+      ['IP Address', status.communication.ip_address || 'N/A']
+    ];
+
+    // Add specific fields based on communication type
+    if (status.communication.type === 'WiFi') {
+      commItems.push(['SSID', status.communication.ssid || 'Unknown']);
+      commItems.push(['RSSI', status.communication.rssi || 'Unknown']);
+      commItems.push(['Gateway', status.communication.gateway || 'Unknown']);
+    } else if (status.communication.type === 'Ethernet') {
+      commItems.push(['Speed', status.communication.speed || 'Unknown']);
+      commItems.push(['Duplex', status.communication.duplex || 'Unknown']);
+      commItems.push(['Gateway', status.communication.gateway || 'Unknown']);
+    } else if (status.communication.type && (status.communication.type.includes('SIM') || status.communication.type.includes('Quectel'))) {
+      commItems.push(['Operator', status.communication.operator || 'Unknown']);
+      commItems.push(['Signal (CSQ)', status.communication.signal_strength || '0']);
+      commItems.push(['Network', status.communication.network_type || 'Unknown']);
+    }
+
+    const commCard = createStatusCard('Communication', commItems);
+    grid.appendChild(commCard);
+  }
+
+  // IEC104 Protocol Status (RTU to SCADA Master only)
+  if (status.protocols) {
+    const iec104Items = [
+      ['Status', status.protocols.iec104_status || 'Unknown', 'iec104_status'],
+      ['Last Contact', status.protocols.iec104_last_contact || 'Never'],
+      ['Common Address', status.protocols.iec104_common_addr || '1'],
+      ['K Parameter', status.protocols.iec104_k || '12'],
+      ['W Parameter', status.protocols.iec104_w || '8'],
+      ['Connection Mode', 'RTU to SCADA'],
+      ['Frame Sent', (status.protocols.iec104_frames_sent || 0) + ' frames'],
+      ['Frame Received', (status.protocols.iec104_frames_received || 0) + ' frames']
+    ];
+
+    const iec104Card = createStatusCard('IEC104 Protocol', iec104Items);
+    grid.appendChild(iec104Card);
+
+    // Modbus Protocol Status (ESP32 as Master) - Only basic status and slave online/offline
+    const modbusSlaves = status.protocols.modbus_slaves || [];
+    const modbusItems = [
+      ['Mode', 'ESP32 as Master'],
+      ['Status', status.protocols.modbus_status || 'Unknown', 'modbus_status'],
+      ['Slave Count', modbusSlaves.length + ' configured'],
+      ['Baud Rate', status.protocols.modbus_baud || '9600'],
+      ['Parity', status.protocols.modbus_parity || 'None'],
+      ['Poll Interval', (status.protocols.modbus_poll_ms || 1000) + 'ms'],
+      ['Success Rate', (status.protocols.modbus_polls_success || 0) + '%'],
+      ['Last Poll', status.protocols.modbus_last_poll || 'Never']
+    ];
+
+    // Add only slave online/offline status (no detailed info)
+    if (modbusSlaves.length > 0) {
+      modbusSlaves.forEach((slave, index) => {
+        const slaveName = slave.name ? `${slave.name} (ID:${slave.id})` : `Slave ${slave.id || index + 1}`;
+        const statusClass = slave.status === 'Online' ? 'success' : slave.status === 'Offline' ? 'warning' : 'error';
+        
+        modbusItems.push([
+          slaveName,
+          slave.status || 'Unknown',
+          statusClass
+        ]);
+      });
+    }
+
+    const modbusCard = createStatusCard('Modbus Protocol', modbusItems);
+    grid.appendChild(modbusCard);
+  }
+
+  // Render features & Modbus values into dedicated sections
+  renderFeatureTables(status);
+}
+
+// New renderer for feature & modbus tables
+function renderFeatureTables(status){
+  if(!status) return;
+  console.log('[renderFeatureTables] status.main_features:', status.main_features);
+  console.log('[renderFeatureTables] status.extended_features:', status.extended_features);
+  console.log('[renderFeatureTables] current config:', api && api.config);
+  // Main Features
+  const mainBody = byId('mainFeaturesBody');
+  const mainEmpty = byId('mainFeaturesEmpty');
+  if(mainBody){
+    mainBody.innerHTML='';
+    let count=0;
+    if(status.main_features){
+      if('gfd' in status.main_features){ addFeatureRow(mainBody,'GFD (Ground Fault Detection)','1001','Single Point Information', status.main_features.gfd); count++; }
+      if('supply' in status.main_features){ addFeatureRow(mainBody,'Power Supply','1002','Double Point Information', status.main_features.supply); count++; }
+      if('cb_1' in status.main_features){ addFeatureRow(mainBody,'Circuit Breaker 1','1003','Double Point Information', status.main_features.cb_1); count++; }
+      if('cb_2' in status.main_features){ addFeatureRow(mainBody,'Circuit Breaker 2','1004','Double Point Information', status.main_features.cb_2); count++; }
+      if('cb_3' in status.main_features){ addFeatureRow(mainBody,'Circuit Breaker 3','1005','Double Point Information', status.main_features.cb_3); count++; }
+    }
+    if(mainEmpty) mainEmpty.style.display = count? 'none':'block';
+  }
+  // Extended Features
+  const extBody = byId('extFeaturesBody');
+  const extEmpty = byId('extFeaturesEmpty');
+  if(extBody){
+    extBody.innerHTML='';
+    let count=0;
+    if(status.extended_features){
+  if(Object.keys(status.extended_features).length===0){ console.warn('[renderFeatureTables] extended_features object empty'); }
+      if('door' in status.extended_features){ addFeatureRow(extBody,'Door Sensor','2001','Single Point Information', status.extended_features.door); count++; }
+      if('di_1' in status.extended_features){ addFeatureRow(extBody,'Digital Input 1','2002','Single Point Information', status.extended_features.di_1); count++; }
+      if('di_2' in status.extended_features){ addFeatureRow(extBody,'Digital Input 2','2003','Single Point Information', status.extended_features.di_2); count++; }
+      if('di_3' in status.extended_features){ addFeatureRow(extBody,'Digital Input 3','2004','Single Point Information', status.extended_features.di_3); count++; }
+      if('di_4' in status.extended_features){ addFeatureRow(extBody,'Digital Input 4','2005','Single Point Information', status.extended_features.di_4); count++; }
+      if('di_5' in status.extended_features){ addFeatureRow(extBody,'Digital Input 5','2006','Single Point Information', status.extended_features.di_5); count++; }
+      if('temperature_sensor' in status.extended_features){ addFeatureRow(extBody,'Temperature Sensor','4001','Measured Value - Scaled', status.extended_features.temperature_sensor); count++; }
+      if('humidity_sensor' in status.extended_features){ addFeatureRow(extBody,'Humidity Sensor','4002','Measured Value - Scaled', status.extended_features.humidity_sensor); count++; }
+    }
+    if(extEmpty) extEmpty.style.display = count? 'none':'block';
+  }
+  // Modbus Values
+  const modbusBody = byId('modbusValuesBody');
+  const modbusEmpty = byId('modbusValuesEmpty');
+  if(modbusBody){
+    modbusBody.innerHTML='';
+    let rows=0;
+    const slaves = status.protocols?.modbus_slaves || [];
+    slaves.forEach((slave, slaveIndex)=>{
+      const slaveName = slave.name || `Slave ${slave.id || slaveIndex+1}`;
+      if(slave.registers && slave.registers.length){
+        slave.registers.forEach((register, regIndex)=>{
+          const row = document.createElement('tr');
+          const cells = [];
+          // Slave cell
+          if(regIndex===0){
+            const td = document.createElement('td');
+            td.style.border='1px solid #ccc'; td.style.padding='6px 8px';
+            td.textContent = slaveName; td.rowSpan = slave.registers.length; row.appendChild(td);
+          }
+          // Register name
+            const nameCell = document.createElement('td'); nameCell.style.border='1px solid #ccc'; nameCell.style.padding='6px 8px'; nameCell.textContent= register.name || `Register ${register.address}`; row.appendChild(nameCell);
+          // Address
+            const addrCell = document.createElement('td'); addrCell.style.border='1px solid #ccc'; addrCell.style.padding='6px 8px'; addrCell.style.textAlign='center'; addrCell.textContent= register.address || 'N/A'; row.appendChild(addrCell);
+          // Data Type
+            const typeCell = document.createElement('td'); typeCell.style.border='1px solid #ccc'; typeCell.style.padding='6px 8px'; typeCell.style.textAlign='center'; typeCell.style.fontFamily='monospace'; typeCell.style.fontSize='11px'; typeCell.style.color='#666'; typeCell.textContent = deriveModbusType(register); row.appendChild(typeCell);
+          // Value
+            const valCell = document.createElement('td'); valCell.style.border='1px solid #ccc'; valCell.style.padding='6px 8px'; valCell.style.textAlign='center'; valCell.textContent = register.value !== undefined ? register.value : 'N/A'; row.appendChild(valCell);
+          modbusBody.appendChild(row); rows++;
+        });
+      }
+    });
+    if(modbusEmpty) modbusEmpty.style.display = rows? 'none':'block';
+  }
+}
+
+function deriveModbusType(register){
+  const addr = parseInt(register.address)||0;
+  if(addr>=1 && addr<=9999) return 'MODBUS_COIL';
+  if(addr>=10001 && addr<=19999) return 'MODBUS_INPUT';
+  if(addr>=30001 && addr<=39999) return 'MODBUS_INPUT_REG';
+  if(addr>=40001 && addr<=49999) return 'MODBUS_HOLDING';
+  return 'MODBUS_HOLDING';
+}
+
+function addFeatureRow(tbody, name, ioa, dataType, value) {
+  const row = document.createElement('tr');
+  
+  const nameCell = document.createElement('td');
+  nameCell.style.border = '1px solid #ddd';
+  nameCell.style.padding = '8px';
+  nameCell.textContent = name;
+  
+  const ioaCell = document.createElement('td');
+  ioaCell.style.border = '1px solid #ddd';
+  ioaCell.style.padding = '8px';
+  ioaCell.style.textAlign = 'center';
+  ioaCell.style.fontFamily = 'monospace';
+  ioaCell.style.fontSize = '12px';
+  ioaCell.style.color = '#333';
+  ioaCell.textContent = ioa;
+  
+  const dataTypeCell = document.createElement('td');
+  dataTypeCell.style.border = '1px solid #ddd';
+  dataTypeCell.style.padding = '8px';
+  dataTypeCell.style.textAlign = 'center';
+  dataTypeCell.style.fontFamily = 'monospace';
+  dataTypeCell.style.fontSize = '11px';
+  dataTypeCell.style.color = '#666';
+  dataTypeCell.textContent = dataType;
+  
+  const valueCell = document.createElement('td');
+  valueCell.style.border = '1px solid #ddd';
+  valueCell.style.padding = '8px';
+  valueCell.style.textAlign = 'center';
+  valueCell.style.fontWeight = 'bold';
+  valueCell.textContent = value;
+  
+  row.appendChild(nameCell);
+  row.appendChild(ioaCell);
+  row.appendChild(dataTypeCell);
+  row.appendChild(valueCell);
+  tbody.appendChild(row);
+}
+
+function createStatusCard(title, items) {
+  const card = document.createElement('div');
+  card.className = 'status-card';
+  
+  const header = document.createElement('h4');
+  header.textContent = title;
+  card.appendChild(header);
+
+  items.forEach(([label, value, type]) => {
+    const item = document.createElement('div');
+    item.style.marginBottom = '6px';
+    
+    const labelSpan = document.createElement('span');
+    labelSpan.textContent = label + ': ';
+    labelSpan.style.fontSize = '12px';
+    labelSpan.style.color = '#666';
+    
+    const valueSpan = document.createElement('span');
+    valueSpan.className = 'status-value';
+    
+    if (type === 'digital') {
+      valueSpan.textContent = value ? 'ON' : 'OFF';
+      valueSpan.classList.add(value ? 'on' : 'off');
+    } else if (type === 'cb') {
+      valueSpan.textContent = value;
+      valueSpan.classList.add(value === 'CLOSED' ? 'on' : 'off');
+    } else if (type === 'comm_status') {
+      valueSpan.textContent = value;
+      if (value === 'Connected' || value === 'Link Up') {
+        valueSpan.classList.add('on');
+      } else {
+        valueSpan.classList.add('off');
+      }
+    } else if (type === 'iec104_status') {
+      valueSpan.textContent = value;
+      if (value === 'Connected') {
+        valueSpan.classList.add('on');
+      } else {
+        valueSpan.classList.add('fault');
+      }
+    } else if (type === 'modbus_status') {
+      valueSpan.textContent = value;
+      if (value === 'Master Active') {
+        valueSpan.classList.add('on');
+      } else {
+        valueSpan.classList.add('off');
+      }
+    } else if (type === 'success') {
+      valueSpan.textContent = value;
+      valueSpan.classList.add('on');
+    } else if (type === 'warning') {
+      valueSpan.textContent = value;
+      valueSpan.classList.add('off');
+    } else if (type === 'error') {
+      valueSpan.textContent = value;
+      valueSpan.classList.add('fault');
+    } else if (type === 'info') {
+      valueSpan.textContent = value;
+      // info type uses default styling
+    } else {
+      valueSpan.textContent = value;
+    }
+    
+    item.appendChild(labelSpan);
+    item.appendChild(valueSpan);
+    card.appendChild(item);
+  });
+
+  return card;
+}
+
+// SOE Functions
+async function loadSOE() {
+  try {
+    const data = await api.getSOE();
+    const tbody = document.getElementById('soeBody');
+    tbody.innerHTML = '';
+    
+    if (data.soe && data.soe.length > 0) {
+      data.soe.reverse().forEach(entry => {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+          <td style='padding:3px 6px'>${entry.seq}</td>
+          <td style='padding:3px 6px'>${entry.millis}</td>
+          <td style='padding:3px 6px'>${entry.ioa}</td>
+          <td style='padding:3px 6px'>${entry.val}</td>
+        `;
+      });
+      document.getElementById('soeSummary').textContent = `${data.soe.length} events`;
+    } else {
+      const row = tbody.insertRow();
+      row.innerHTML = `<td colspan='4' style='text-align:center;padding:8px;color:#999'>No SOE data</td>`;
+      document.getElementById('soeSummary').textContent = '0 events';
+    }
+  } catch (error) {
+    console.error('Error loading SOE:', error);
+    showNotification('Error loading SOE: ' + error.message, 'error');
+  }
+}
+
+async function clearSOE() {
+  try {
+    await api.clearSOE();
+    await loadSOE();
+    showNotification('SOE cleared successfully', 'success');
+  } catch (error) {
+    console.error('Error clearing SOE:', error);
+    showNotification('Error clearing SOE: ' + error.message, 'error');
+  }
+}
+
+// Logs Functions
+async function loadLogs() {
+  if (!document.getElementById('log_enable').checked) {
+    document.getElementById('logBox').textContent = 'Logs disabled. Enable logs to view output.';
+    return;
+  }
+
+  try {
+    const data = await api.getLogs();
+    const logBox = document.getElementById('logBox');
+    const wasScrolledToBottom = logBox.scrollHeight - logBox.clientHeight <= logBox.scrollTop + 1;
+    
+    if (data.logs && data.logs.length > 0) {
+      logBox.textContent = data.logs.join('\n');
+      
+      if (document.getElementById('autoScrollLogs').checked && wasScrolledToBottom) {
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+    } else {
+      logBox.textContent = 'No log data available';
+    }
+  } catch (error) {
+    console.error('Error loading logs:', error);
+    showNotification('Error loading logs: ' + error.message, 'error');
+  }
+}
+
+async function clearLogs() {
+  try {
+    await api.clearLogs();
+    await loadLogs();
+    showNotification('Logs cleared successfully', 'success');
+  } catch (error) {
+    console.error('Error clearing logs:', error);
+    showNotification('Error clearing logs: ' + error.message, 'error');
+  }
+}
+
+// Status Functions
+async function loadStatus() {
+  try {
+    // Reload configuration before displaying status
+    api.loadConfigState();
+    const status = await api.getStatus();
+    displayStatus(status);
+    updateLiveStatusPanel(); // Update header status panel
+  updateRtuClockBar();
+  renderFeatureTables(status);
+  } catch (error) {
+    console.error('Error loading status:', error);
+    showNotification('Error loading status: ' + error.message, 'error');
+  }
+}
+
+// Notification System
+function showNotification(message, type = 'success') {
+  const status = document.getElementById('status');
+  status.textContent = message;
+  status.className = `status ${type}`;
+  status.style.display = 'block';
+  
+  setTimeout(() => {
+    status.style.display = 'none';
+  }, 3000);
+}
+
+// Live Status Panel Update
+function updateLiveStatusPanel() {
+  if (!api || !api.status) return;
+  
+  const status = api.status;
+  const panel = byId('liveStatusPanel');
+  
+  // Update status panel with prototype mode styling
+  if (panel) {
+    panel.classList.add('prototype');
+  }
+  
+  // Update connection status
+  byId('ls_conn').textContent = 'Online';
+  byId('ls_comm').textContent = status.communication?.type || api.config?.comm_method || '-';
+  byId('ls_uptime').textContent = status.system?.uptime || '0d 0h 0m';
+  byId('ls_heap').textContent = status.system?.memory_free || '45.2 KB';
+  byId('ls_stack').textContent = '1.2K';
+  byId('ls_stack_comm').textContent = '856';
+  byId('ls_stack_iec104').textContent = '724';
+  byId('ls_stack_hal').textContent = '512';
+  byId('ls_rev').textContent = 'prototype-v1.0';
+  
+  // Update IEC104 stats
+  if (status.protocols?.iec104_frames_sent !== undefined) {
+    byId('ls_iec104_tx').textContent = status.protocols.iec104_frames_sent;
+  }
+  if (status.protocols?.iec104_frames_received !== undefined) {
+    byId('ls_iec104_rx').textContent = status.protocols.iec104_frames_received;
+  }
+  if (status.protocols?.iec104_last_contact) {
+    byId('ls_iec104_last').textContent = status.protocols.iec104_last_contact.replace('s ago', '');
+  }
+}
+
+// Dedicated RTU Clock Bar updater
+function updateRtuClockBar(){
+  if(!api || !api.status) return;
+  const st = api.status.system || {};
+  const full = byId('rtu_time_full');
+  if(full) full.textContent = st.rtu_time || '--';
+  const src = byId('rtu_time_source');
+  if(src) src.textContent = 'Source: ' + (st.rtu_time_source || 'RTC');
+  const upd = byId('rtu_time_updated');
+  if(upd){ const d=new Date(); upd.textContent = d.toLocaleTimeString(); }
+}
+
+// Auto-refresh functions
+let statusInterval, soeInterval, logsInterval;
+
+function setupAutoRefresh() {
+  // Status auto-refresh (5s)
+  if (statusInterval) clearInterval(statusInterval);
+  if (document.getElementById('autoStatus').checked) {
+    statusInterval = setInterval(loadStatus, 5000);
+  }
+
+  // SOE auto-refresh (3s)
+  if (soeInterval) clearInterval(soeInterval);
+  if (document.getElementById('autoSoe').checked) {
+    soeInterval = setInterval(loadSOE, 3000);
+  }
+
+  // Logs auto-refresh (2s)
+  if (logsInterval) clearInterval(logsInterval);
+  if (document.getElementById('autoLogs').checked) {
+    logsInterval = setInterval(loadLogs, 2000);
+  }
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function() {
+  // Initial load
+  loadStatus();
+  loadSOE();
+  loadLogs();
+  updateLiveStatusPanel(); // Update header status panel
+  updateRtuClockBar();
+  if(api && api.status) renderFeatureTables(api.status);
+  
+  // Setup auto-refresh
+  setupAutoRefresh();
+
+  // Setup periodic configuration sync (every 10 seconds)
+  setInterval(function() {
+    api.loadConfigState();
+    api.loadIOAConfig();
+  }, 10000);
+
+  // Listen for storage changes (when config is updated from another page)
+  window.addEventListener('storage', function(e) {
+    if (e.key === 'goesConfigState') {
+      // Configuration changed, reload status display
+      api.loadConfigState();
+      loadStatus();
+      showNotification('Configuration updated - status refreshed', 'info');
+    } else if (e.key === 'prototype_ioa_config' || e.key === 'modbus_slaves_config') {
+      // Modbus/IOA configuration changed, reload status display
+      api.loadIOAConfig();
+      loadStatus();
+      showNotification('Modbus/IOA configuration updated - status refreshed', 'info');
+    }
+  });
+
+  // Also check for config changes on page focus
+  window.addEventListener('focus', function() {
+    api.loadConfigState();
+    api.loadIOAConfig();
+    loadStatus();
+  });
+
+  // Button event listeners
+  document.getElementById('btnRefreshStatus').addEventListener('click', loadStatus);
+  document.getElementById('btnRefreshConfig').addEventListener('click', function() {
+    api.loadConfigState();
+    loadStatus();
+    showNotification('Configuration reloaded from localStorage', 'success');
+  });
+  document.getElementById('btnRefreshSoe').addEventListener('click', loadSOE);
+  document.getElementById('btnClearSoe').addEventListener('click', clearSOE);
+  document.getElementById('btnRefreshLogs').addEventListener('click', loadLogs);
+  document.getElementById('btnClearLogs').addEventListener('click', clearLogs);
+
+  // Auto-refresh toggle listeners
+  document.getElementById('autoStatus').addEventListener('change', function() {
+    setupAutoRefresh();
+    api.saveState();
+  });
+  
+  document.getElementById('autoSoe').addEventListener('change', function() {
+    setupAutoRefresh();
+    api.saveState();
+  });
+  
+  document.getElementById('autoLogs').addEventListener('change', function() {
+    setupAutoRefresh();
+    api.saveState();
+  });
+
+  // Log enable toggle
+  document.getElementById('log_enable').addEventListener('change', function() {
+    if (this.checked) {
+      loadLogs();
+    } else {
+      document.getElementById('logBox').textContent = 'Logs disabled. Enable logs to view output.';
+    }
+    api.saveState();
+  });
+
+  // Auto-scroll toggle
+  document.getElementById('autoScrollLogs').addEventListener('change', function() {
+    api.saveState();
+  });
+
+  // Log filter buttons
+  document.getElementById('btnApplyLogFilter').addEventListener('click', function() {
+    // In a real implementation, this would filter logs based on selected categories
+    showNotification('Log filters applied (prototype mode)', 'success');
+  });
+
+  document.getElementById('btnFilterComm').addEventListener('click', function() {
+    // Preset: only communication related logs
+    document.querySelectorAll('.logCat').forEach(cb => cb.checked = false);
+    document.getElementById('log_cat_comm').checked = true;
+    document.getElementById('log_cat_ethernet').checked = true;
+    document.getElementById('log_cat_modem').checked = true;
+    showNotification('Communication filter applied', 'success');
+  });
+
+  document.getElementById('btnFilterErrors').addEventListener('click', function() {
+    // Preset: only error logs
+    document.querySelectorAll('.logCat').forEach(cb => cb.checked = false);
+    document.getElementById('log_cat_error').checked = true;
+    showNotification('Error filter applied', 'success');
+  });
+
+  document.getElementById('btnFilterProtocol').addEventListener('click', function() {
+    // Preset: protocol related logs
+    document.querySelectorAll('.logCat').forEach(cb => cb.checked = false);
+    document.getElementById('log_cat_iec104').checked = true;
+    document.getElementById('log_cat_modbus').checked = true;
+    showNotification('Protocol filter applied', 'success');
+  });
+
+  document.getElementById('btnFilterSystem').addEventListener('click', function() {
+    // Preset: system logs
+    document.querySelectorAll('.logCat').forEach(cb => cb.checked = false);
+    document.getElementById('log_cat_system').checked = true;
+    document.getElementById('log_cat_config').checked = true;
+    document.getElementById('log_cat_task').checked = true;
+    showNotification('System filter applied', 'success');
+  });
+});
+
+// Utility functions
+function byId(id) { return document.getElementById(id); }
+
+function showNotification(msg, type = 'info') {
+  const n = byId('notif');
+  if (!n) return;
+  
+  // Clear any existing timeout
+  if (n.hideTimeout) {
+    clearTimeout(n.hideTimeout);
+    delete n.hideTimeout;
+  }
+  
+  n.textContent = msg;
+  
+  // Determine notification type
+  if (type === true) type = 'error';
+  else if (type === false) type = 'success';
+  
+  n.className = 'notif-bar ' + type;
+  n.style.display = 'block';
+  
+  // Auto hide after 5 seconds for success, 8 seconds for error
+  const hideDelay = (type === 'error') ? 8000 : 5000;
+  n.hideTimeout = setTimeout(() => {
+    n.style.display = 'none';
+    delete n.hideTimeout;
+  }, hideDelay);
+}
+
+// Cleanup intervals when page unloads
+window.addEventListener('beforeunload', function() {
+  if (statusInterval) clearInterval(statusInterval);
+  if (soeInterval) clearInterval(soeInterval);
+  if (logsInterval) clearInterval(logsInterval);
+});
+</script>
+</body></html>

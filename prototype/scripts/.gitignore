@@ -1,0 +1,9 @@
+# Serial capture logs
+logs/*.log
+
+# Temporary files
+*.tmp
+*.bak
+
+# macOS
+.DS_Store

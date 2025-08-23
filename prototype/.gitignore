@@ -1,0 +1,8 @@
+# Prototype generated files
+extracted.html
+*.tmp
+*.bak
+
+# Local development
+.DS_Store
+Thumbs.db

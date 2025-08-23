@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>SCADA Master Simulator</title>
+    <style>
+        body { font-family: sans-serif; }
+        #log { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
+    </style>
+</head>
+<body>
+    <h1>SCADA Master Simulator</h1>
+    <p>Status: <b id="status">Menghubungkan...</b></p>
+    <button id="giButton">Kirim General Interrogation (GI)</button>
+    
+    <h2>Log Data dari RTU:</h2>
+    <div id="log"></div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const logEl = document.getElementById('log');
+        const giButton = document.getElementById('giButton');
+
+        const ws = new WebSocket('ws://localhost:3000');
+
+        ws.onopen = () => {
+            statusEl.textContent = 'Terhubung ke Backend';
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'status') {
+                statusEl.textContent = data.message;
+            } else if (data.type === 'iec104_data') {
+                const p = document.createElement('p');
+                p.textContent = `[IN] ${data.payload}`;
+                logEl.appendChild(p);
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+        };
+        
+        giButton.onclick = () => {
+            fetch('/api/command/gi', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => console.log('Response API:', data));
+        };
+    </script>
+</body>
+</html>
