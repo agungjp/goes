@@ -121,7 +121,8 @@ void setup()
     ; // wait for serial port to connect. Needed for native USB
   }
   Serial.println("GOES MCU Application");
-  LogBuffer::init(120, 160); // keep last 120 lines
+  // Will adjust size after loading config
+  LogBuffer::init(120, 160); // temporary init
 
   // Initialize modem serial (missing previously) so ModemCommunicator can send AT commands
 #if defined(USE_MODEM_SIM800L) || defined(USE_MODEM_SIM7600) || defined(USE_MODEM_SIM7600CE) || defined(USE_MODEM_QUECTEL_EC25)
@@ -191,6 +192,7 @@ void setup()
   JsonDocument doc; // ArduinoJson v7 preferred alias
   if (deserializeJson(doc, devCfg) == DeserializationError::Ok) {
     if (doc["comm_method"].is<const char*>()) comm_method = doc["comm_method"].as<const char*>();
+    if (doc["log_cap"].is<int>()) { int cap = doc["log_cap"].as<int>(); if (cap>10 && cap<1000) LogBuffer::init(cap,160); }
   }
   initCommunication(comm_method);
   g_currentCommMethod = comm_method;

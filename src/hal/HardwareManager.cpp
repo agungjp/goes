@@ -51,8 +51,13 @@ HardwareManager::~HardwareManager() {
 }
 
 void HardwareManager::init() {
-    // Inisialisasi bus komunikasi utama
+    // Inisialisasi bus SPI utama (VSPI) untuk Ethernet
     SPI.begin(SPI_SCK_PIN, SPI_MISO_PIN, SPI_MOSI_PIN);
+#ifdef USE_SD_HSPI
+    // Inisialisasi bus HSPI terpisah untuk SD card (mengurangi blocking VSPI)
+    static SPIClass hspi(HSPI);
+    hspi.begin(HSPI_SCK_PIN, HSPI_MISO_PIN, HSPI_MOSI_PIN, SD_CS_PIN);
+#endif
 #if !defined(SIMULATE_NO_PERIPHERALS)
     Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
 #endif

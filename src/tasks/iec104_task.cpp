@@ -15,9 +15,10 @@ void iec104_task(void *pvParameters) {
         QueueHandle_t queue = static_cast<QueueHandle_t>(ctx);
         if (queue != NULL) {
             FrameData frame;
-            if (len > (int)sizeof(frame.buffer)) len = sizeof(frame.buffer);
-            frame.length = static_cast<uint16_t>(len);
-            memcpy(frame.buffer, buf, frame.length);
+            uint16_t copyLen = len;
+            if (copyLen > sizeof(frame.buffer)) copyLen = sizeof(frame.buffer);
+            frame.length = copyLen;
+            memcpy(frame.buffer, buf, copyLen);
             if (xPortInIsrContext()) {
                 BaseType_t hp = pdFALSE;
                 xQueueSendFromISR(queue, &frame, &hp);

@@ -28,8 +28,8 @@ void IEC104Core::sendData(uint16_t ioa, int value, byte type) {
     payload[1] = 1;    // Variable Structure Qualifier
     payload[2] = 3;    // Cause of Transmission: Spontaneous
     payload[3] = 0;    // Originator Address
-    payload[4] = 0;    // Common Address of ASDU (low byte)
-    payload[5] = 0;    // Common Address of ASDU (high byte)
+    payload[4] = _commonAddress & 0xFF;    // Common Address low
+    payload[5] = (_commonAddress >> 8) & 0xFF;    // Common Address high
     
     // Information Object Address
     payload[6] = ioa & 0xFF;
@@ -66,8 +66,8 @@ bool IEC104Core::buildDataFrame(uint16_t ioa, int value, byte type, byte* outBuf
     payload[1] = 1;    // VSQ: 1 object
     payload[2] = 3;    // COT: Spontaneous
     payload[3] = 0;    // Originator
-    payload[4] = 0;    // ASDU addr low
-    payload[5] = 0;    // ASDU addr high
+    payload[4] = _commonAddress & 0xFF;    // ASDU addr low
+    payload[5] = (_commonAddress >> 8) & 0xFF;    // ASDU addr high
     payload[6] = ioa & 0xFF;
     payload[7] = (ioa >> 8) & 0xFF;
     payload[8] = 0;    // IOA third byte (unused)

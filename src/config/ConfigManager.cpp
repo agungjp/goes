@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 #include "device_config.h"
 #include "ioa_config.h"
+#include "iec104/iec104_config.h" // for IEC104_ASDU_ADDRESS, IEC104_K
 
 #define DEVICE_CONFIG_PATH "/device_config.json"
 #define IOA_CONFIG_PATH    "/ioa_config.json"
@@ -56,11 +57,21 @@ bool ConfigManager::saveDeviceConfig(String json) {
     // Validate JSON and prevent accidental empty overwrite
     JsonDocument doc;
     if (deserializeJson(doc, json) != DeserializationError::Ok) return false;
+    // Strip sensitive keys (deprecated)
+    doc.remove("wifi_ssid");
+    doc.remove("wifi_password");
+    doc.remove("apn_user");
+    doc.remove("apn_pass");
     // Merge with existing (so fields user didn't send aren't lost)
     String existing = _readFile(DEVICE_CONFIG_PATH);
     if (existing != "{}") {
         JsonDocument cur;
         if (deserializeJson(cur, existing) == DeserializationError::Ok) {
+            // Also strip from existing in case older file has them
+            cur.remove("wifi_ssid");
+            cur.remove("wifi_password");
+            cur.remove("apn_user");
+            cur.remove("apn_pass");
             for (JsonPair kv : doc.as<JsonObject>()) {
                 cur[kv.key()] = kv.value();
             }
@@ -79,10 +90,7 @@ String ConfigManager::getDeviceConfig() {
 #else
     defaults["apn"] = "";
 #endif
-    defaults["apn_user"] = "";
-    defaults["apn_pass"] = "";
-    defaults["wifi_ssid"] = WIFI_STA_SSID;
-    defaults["wifi_password"] = WIFI_STA_PASSWORD;
+    // Removed wifi_ssid, wifi_password, apn_user, apn_pass from exposure and persistence
     // Feature toggles (runtime)
 #if ENABLE_TASK_WATCHDOG
     defaults["feat_watchdog"] = 1;
@@ -100,13 +108,17 @@ String ConfigManager::getDeviceConfig() {
     defaults["feat_cb2"] = 1;
     defaults["feat_cb3"] = 1;
     defaults["feat_temp"] = 1;
-    defaults["feat_bms"] = 1;
     defaults["feat_di_cadangan"] = 1; // cadangan DI group
     defaults["feat_do_cadangan"] = 1; // cadangan DO group
     defaults["feat_ethernet"] = 1; // allow ethernet comm selection in UI
     defaults["feat_rtc"] = 1; // DS3231 / timekeeping
     defaults["feat_web"] = 1; // allow web server
     defaults["feat_web_log"] = 1; // expose serial log buffer
+    defaults["feat_soe"] = 1; // sequence of events enable
+    defaults["soe_buffer"] = 64; // default SOE buffer length
+    defaults["iec_common_addr"] = IEC104_ASDU_ADDRESS; // runtime adjustable common address
+    defaults["iec_k"] = IEC104_K; // send window
+    defaults["log_cap"] = 120; // default log capacity
 
     String content = _readFile(DEVICE_CONFIG_PATH);
     if (content != "{}") {
@@ -126,12 +138,12 @@ String ConfigManager::getDeviceConfig() {
 bool ConfigManager::saveIoaConfig(String json) {
     JsonDocument doc;
     if (deserializeJson(doc, json) != DeserializationError::Ok) return false;
-    // Build sanitized object: skip zero/negative so they don't erase defaults
+    // Build sanitized object: allow zero (explicit disable) but skip negative values
     JsonDocument sanitized;
     for (JsonPair kv : doc.as<JsonObject>()) {
         if (kv.value().is<int>()) {
             int v = kv.value().as<int>();
-            if (v <= 0) continue; // treat 0 as 'unset'
+            if (v < 0) continue; // negative not allowed
         }
         sanitized[kv.key()] = kv.value();
     }
@@ -159,6 +171,10 @@ String ConfigManager::getIoaConfig() {
     defaults["di_cadangan_1"] = IOA_DI_CADANGAN_1;
     defaults["di_cadangan_2"] = IOA_DI_CADANGAN_2;
     defaults["di_cadangan_3"] = IOA_DI_CADANGAN_3;
+    defaults["di_door"] = IOA_DI_DOOR;
+    // Analog style placeholders
+    defaults["ai_temperature"] = IOA_AI_TEMPERATURE;
+    defaults["ai_humidity"] = IOA_AI_HUMIDITY;
     // Circuit breaker status
     defaults["status_cb_1"] = IOA_STATUS_CB_1;
     defaults["status_cb_2"] = IOA_STATUS_CB_2;
@@ -176,7 +192,7 @@ String ConfigManager::getIoaConfig() {
         JsonDocument current;
         if (deserializeJson(current, content) == DeserializationError::Ok) {
             for (JsonPair kv : current.as<JsonObject>()) {
-                if (kv.value().is<int>() && kv.value().as<int>() <= 0) continue; // skip zero
+                // Respect stored value even if zero (zero means disabled IOA per feature toggle)
                 defaults[kv.key()] = kv.value();
             }
         }
@@ -231,14 +247,14 @@ void ConfigManager::loadExtendedFeatureFlags(
         bool &featCB2,
         bool &featCB3,
         bool &featTemp,
-        bool &featBMS,
+    /* removed featBMS */
         bool &featDICadangan,
         bool &featDOCadangan,
         bool &featEthernet,
         bool &featRTC) {
     // defaults (fail-open) so missing keys do not block features
     featGFD = featSupply = featRemote = featCB1 = featCB2 = featCB3 = true;
-    featTemp = featBMS = featDICadangan = featDOCadangan = featEthernet = featRTC = true;
+    featTemp = featDICadangan = featDOCadangan = featEthernet = featRTC = true; // featBMS removed
     String content = _readFile(DEVICE_CONFIG_PATH);
     if (content == "{}") return;
     auto flagParse = [&](const char* key, bool &target){
@@ -259,7 +275,6 @@ void ConfigManager::loadExtendedFeatureFlags(
     flagParse("\"feat_cb2\"", featCB2);
     flagParse("\"feat_cb3\"", featCB3);
     flagParse("\"feat_temp\"", featTemp);
-    flagParse("\"feat_bms\"", featBMS);
     flagParse("\"feat_di_cadangan\"", featDICadangan);
     flagParse("\"feat_do_cadangan\"", featDOCadangan);
     flagParse("\"feat_ethernet\"", featEthernet);

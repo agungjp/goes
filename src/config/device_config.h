@@ -90,8 +90,8 @@
 #endif
 
 // -- WiFi (selalu di-compile untuk akses Web UI; jika SSID kosong akan fallback ke AP) --
-#define WIFI_STA_SSID      "How I Met Coffee"      // Ganti sesuai kebutuhan
-#define WIFI_STA_PASSWORD  "beawesome"  // Ganti sesuai kebutuhan
+#define WIFI_STA_SSID      "Hola hole"      // Ganti sesuai kebutuhan
+#define WIFI_STA_PASSWORD  "Share*123"  // Ganti sesuai kebutuhan
 #define WIFI_AP_SSID       "GOES_Config_AP"      // SSID fallback AP
 #define WIFI_AP_PASSWORD   "goes1234"            // Minimal 8 karakter untuk WPA2
 #define WIFI_CONNECT_TIMEOUT_MS 15000              // 15 detik mencoba konek STA
@@ -105,31 +105,45 @@
 #define I2C_SDA_PIN         21
 #define I2C_SCL_PIN         22
 
-// -- Bus SPI (Shared) --
-#define SPI_MOSI_PIN        23
-#define SPI_MISO_PIN        19
-#define SPI_SCK_PIN         18
-#define SPI_CS_ETHERNET_PIN 5
-#define SPI_CS_SDCARD_PIN   15
+// -- Bus SPI VSPI (Ethernet) --
+#define SPI_MOSI_PIN        23   // VSPI MOSI
+#define SPI_MISO_PIN        19   // VSPI MISO
+#define SPI_SCK_PIN         18   // VSPI SCK
+#define SPI_CS_ETHERNET_PIN 5    // Ethernet CS (tetap di VSPI)
+
+// ================== Optional Split SD to HSPI ==================
+// Aktifkan pemisahan SD card ke bus HSPI agar lalu lintas Ethernet (VSPI)
+// tidak tertahan selama operasi tulis SD yang lambat.
+// Jika tidak ingin split, komentari USE_SD_HSPI dan gunakan kembali pin lama (15).
+#define USE_SD_HSPI
+#ifdef USE_SD_HSPI
+    // HSPI default pins (bisa diubah jika bentrok):
+    #define HSPI_MOSI_PIN   13
+    #define HSPI_MISO_PIN   12  // catatan: pin strapping, pastikan level benar saat boot
+    #define HSPI_SCK_PIN    14
+    #define SD_CS_PIN       15  // gunakan kembali 15 (strapping, jaga HIGH saat boot)
+#else
+    // Fallback: pakai VSPI bersama (lama)
+    #define SD_CS_PIN       15
+#endif
+// Legacy alias agar kode lama tetap kompilasi jika referensi masih ada
+#define SPI_CS_SDCARD_PIN SD_CS_PIN
 
 // -- Bus UART --
 #define UART_MODEM_NUM      2 // Menggunakan Serial2
 #define UART_MODEM_TX_PIN   17
 #define UART_MODEM_RX_PIN   16
 
-#define UART_BMS_NUM        1 // Menggunakan Serial1
-#define UART_BMS_TX_PIN     4
-#define UART_BMS_RX_PIN     2
-
-#define UART_RS485_NUM      0 // Menggunakan Serial0
-#define UART_RS485_TX_PIN   1
-#define UART_RS485_RX_PIN   3
-#define UART_RS485_DE_PIN   25 // Direction Enable Pin
+// UART1 now repurposed for RS485 (BMS UART removed)
+#define UART_RS485_NUM      1 // Menggunakan Serial1 (dipisah dari UART0 debug)
+#define UART_RS485_TX_PIN   33
+#define UART_RS485_RX_PIN   32
+#define UART_RS485_DE_PIN   25 // Direction Enable Pin (tetap)
 
 // -- Peripheral Lainnya --
 #define DHT22_DATA_PIN      26
 #define LED_HEARTBEAT_PIN   27
-#define MODEM_RESET_PIN     32
+#define MODEM_RESET_PIN     4   // dipindah dari 32 untuk hindari konflik UART1 RX
 #define RTC_I2C_ADDR        0x68
 
 
@@ -152,14 +166,17 @@ struct DigitalInputConfig {
 
 const DigitalInputConfig digitalInputs[] = {
     // Chip 1: INPUTS - GENERAL (0x20)
-    {PCF_INPUTS_GENERAL_ADDR, 0, IOA_DI_GFD, "DI - GFD"},
-    {PCF_INPUTS_GENERAL_ADDR, 1, IOA_DI_SUPPLY_STATUS, "DI - Supply Status"},
-    {PCF_INPUTS_GENERAL_ADDR, 2, IOA_DI_REMOTE_1, "DI - Remote 1 Status"},
-    {PCF_INPUTS_GENERAL_ADDR, 3, IOA_DI_REMOTE_2, "DI - Remote 2 Status"},
-    {PCF_INPUTS_GENERAL_ADDR, 4, IOA_DI_REMOTE_3, "DI - Remote 3 Status"},
-    {PCF_INPUTS_GENERAL_ADDR, 5, IOA_DI_CADANGAN_1, "DI - Cadangan 1"},
-    {PCF_INPUTS_GENERAL_ADDR, 6, IOA_DI_CADANGAN_2, "DI - Cadangan 2"},
-    {PCF_INPUTS_GENERAL_ADDR, 7, IOA_DI_CADANGAN_3, "DI - Cadangan 3"},
+    {PCF_INPUTS_GENERAL_ADDR, 0, IOA_DI_GFD,          "DI GFD"},
+    {PCF_INPUTS_GENERAL_ADDR, 1, IOA_DI_SUPPLY_STATUS,"DI SUPPLY"},
+    {PCF_INPUTS_GENERAL_ADDR, 2, IOA_DI_REMOTE_1,     "DI REMOTE 1"},
+    {PCF_INPUTS_GENERAL_ADDR, 3, IOA_DI_REMOTE_2,     "DI REMOTE 2"},
+    {PCF_INPUTS_GENERAL_ADDR, 4, IOA_DI_REMOTE_3,     "DI REMOTE 3"},
+    {PCF_INPUTS_GENERAL_ADDR, 5, IOA_DI_1,            "DI 1"},
+    {PCF_INPUTS_GENERAL_ADDR, 6, IOA_DI_2,            "DI 2"},
+    {PCF_INPUTS_GENERAL_ADDR, 7, IOA_DI_3,            "DI 3"},
+    // Chip 2: STATUS CB (0x21) free pins repurposed for DI4 & DI5
+    {PCF_STATUS_CB_ADDR,      6, IOA_DI_4,            "DI 4"},
+    {PCF_STATUS_CB_ADDR,      7, IOA_DI_5,            "DI 5"},
 };
 
 // -- Definisi Output Digital (DO) --
@@ -171,10 +188,9 @@ struct DigitalOutputConfig {
 };
 
 const DigitalOutputConfig digitalOutputs[] = {
-    // Chip 3: OUTPUTS - COMMANDS (0x22)
-    // Output untuk CB sekarang dikelola oleh struct CircuitBreakerConfig
-    {PCF_OUTPUTS_CMD_ADDR, 6, IOA_DO_CADANGAN_1, "DO - Cadangan 1"},
-    {PCF_OUTPUTS_CMD_ADDR, 7, IOA_DO_CADANGAN_2, "DO - Cadangan 2"},
+    // Chip 3: OUTPUTS - COMMANDS (0x22) pin 0..5 used by CB commands
+    {PCF_OUTPUTS_CMD_ADDR, 6, IOA_DO_1, "DO 1"},
+    {PCF_OUTPUTS_CMD_ADDR, 7, IOA_DO_2, "DO 2"},
 };
 
 

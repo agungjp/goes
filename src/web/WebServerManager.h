@@ -14,6 +14,7 @@ private:
     ConfigManager& _configManager;
 
     void _setupRoutes();
+    bool _checkAuth(AsyncWebServerRequest *request);
 };
 
 #endif // WEBSERVER_MANAGER_H

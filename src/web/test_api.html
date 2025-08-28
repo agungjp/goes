@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API GOES</title>
+</head>
+<body>
+    <h1>Test API GOES RTU</h1>
+    <div id="status">Loading...</div>
+    <div id="logs"></div>
+    
+    <script>
+        console.log('Starting API test...');
+        
+        function testAPI() {
+            console.log('Testing /api/status endpoint...');
+            
+            fetch('http://192.168.1.15/api/status', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Basic ' + btoa('admin:admin123'),
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('API Response:', data);
+                document.getElementById('status').innerHTML = 
+                    '<h3>Status API Test - SUCCESS</h3>' +
+                    '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            })
+            .catch(error => {
+                console.error('API Error:', error);
+                document.getElementById('status').innerHTML = 
+                    '<h3>Status API Test - FAILED</h3>' +
+                    '<p style="color:red">Error: ' + error.message + '</p>';
+            });
+        }
+        
+        // Test immediately
+        testAPI();
+        
+        // Test every 5 seconds
+        setInterval(testAPI, 5000);
+    </script>
+</body>
+</html>

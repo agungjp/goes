@@ -23,7 +23,6 @@ public:
         bool &featCB2,
         bool &featCB3,
         bool &featTemp,
-        bool &featBMS,
         bool &featDICadangan,
         bool &featDOCadangan,
         bool &featEthernet,

@@ -26,7 +26,7 @@ struct MeasurementData {
 // Struct for queueing frame data
 struct FrameData {
     byte buffer[256];
-    byte length;
+    uint16_t length; // unified with utils/Queue.h
 };
 
 class IEC104Core : public IFrameProcessor {
@@ -38,6 +38,8 @@ public:
     // Build IEC104 I-frame for spontaneous measurement without queuing/callback.
     // Returns true on success and fills outLen (<=256) and outBuf with frame bytes.
     bool buildDataFrame(uint16_t ioa, int value, byte type, byte* outBuf, byte &outLen);
+    void setCommonAddress(uint16_t ca) { _commonAddress = ca; }
+    void setSendWindow(uint8_t k) { _kWindow = k; }
 
     using FrameReadyCallback = void(*)(void* ctx, const byte* buf, byte len);
     void setFrameReadyCallback(FrameReadyCallback callback, void* ctx);
@@ -53,6 +55,8 @@ private:
 
     uint16_t _txSeq = 0;
     uint16_t _rxSeq = 0;
+    uint16_t _commonAddress = IEC104_ASDU_ADDRESS;
+    uint8_t _kWindow = IEC104_K;
 
     void sendUFormat(byte controlByte);
     void sendSFrame();

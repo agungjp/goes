@@ -11,6 +11,7 @@
 #include "esp_heap_caps.h"
 #include <ArduinoJson.h>
 #include "utils/LogBuffer.h"
+#include "utils/SOEBuffer.h"
 
 extern HardwareManager hardwareManager;
 
@@ -21,6 +22,10 @@ void hal_task(void *pvParameters)
 
     // Cached feature flags (updated periodically by reading config file)
     bool featDI = true, featCB = true, featDO = true; // DO placeholder for future
+    bool featSOE = true; // sequence of events feature
+    static bool soeInit = false;
+    static uint32_t lastSoeCfgCheck = 0;
+    size_t soeCapacity = 64; // default, can be overridden by config
     // Dynamic IOA maps (initialised with compile-time defaults)
     static uint16_t ioaMapDI[digitalInputCount] = {
         IOA_DI_GFD, IOA_DI_SUPPLY_STATUS, IOA_DI_REMOTE_1, IOA_DI_REMOTE_2,
@@ -42,7 +47,7 @@ void hal_task(void *pvParameters)
     while (true)
     {
         // Reload feature toggles every 5s to allow runtime changes
-        if (millis() - lastCfgCheck > 5000) {
+    if (millis() - lastCfgCheck > 5000) {
             extern ConfigManager configManager; // defined in main.cpp
             configManager.loadFeatureFlags(featDI, featCB, featDO);
             // Load dynamic IOA config
@@ -71,9 +76,20 @@ void hal_task(void *pvParameters)
             lastCfgCheck = millis();
         }
 
+        // SOE config reload (every 7s to stagger)
+        if (millis() - lastSoeCfgCheck > 7000) {
+            extern ConfigManager configManager;
+            String devCfg = configManager.getDeviceConfig();
+            int idx;
+            if ((idx = devCfg.indexOf("feat_soe")) >= 0) { int c = devCfg.indexOf(':', idx); if (c>0) featSOE = devCfg.substring(c+1).toInt()!=0; }
+            if ((idx = devCfg.indexOf("soe_buffer")) >= 0) { int c = devCfg.indexOf(':', idx); if (c>0) { int val = devCfg.substring(c+1).toInt(); if (val>0 && val<2048) { if (val != (int)soeCapacity) { soeCapacity = (size_t)val; SOEBuffer::init(soeCapacity); soeInit=true; } } } }
+            if (!soeInit) { SOEBuffer::init(soeCapacity); soeInit=true; }
+            lastSoeCfgCheck = millis();
+        }
+
         hardwareManager.readAllDigitalInputs();
 
-        if (featDI) {
+    if (featDI) {
             // Process general digital inputs (single-point)
         for (int i = 0; i < hardwareManager.getDigitalInputCount(); ++i) {
                 if (hardwareManager.hasDigitalInputChanged(i)) {
@@ -82,11 +98,12 @@ void hal_task(void *pvParameters)
                     data.value = hardwareManager.getDigitalInputValue(i);
                     data.type = M_SP_NA_1; // Single Point
                     xQueueSend(measurementQueue, &data, pdMS_TO_TICKS(10));
+            if (featSOE) SOEBuffer::push(data.ioa, data.value);
                 }
             }
         }
 
-        if (featCB) {
+    if (featCB) {
             // Process circuit breaker statuses (double-point)
         for (int i = 0; i < circuitBreakerCount; i++) {
                 uint8_t current_status = hardwareManager.getCircuitBreakerStatus(circuitBreakers[i].cbNumber);
@@ -97,6 +114,7 @@ void hal_task(void *pvParameters)
                     data.value = current_status;
                     data.type = M_DP_NA_1; // Double Point
                     xQueueSend(measurementQueue, &data, pdMS_TO_TICKS(10));
+            if (featSOE) SOEBuffer::push(data.ioa, data.value);
                 }
             }
         }
